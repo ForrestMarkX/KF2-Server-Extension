@@ -1,5 +1,86 @@
 Class Ext_PerkDemolition extends Ext_PerkBase;
 
+var bool bSirenResistance,bCanUseSacrifice,bDirectHit,bCriticalHit,bProfessionalActive;
+var bool bUsedSacrifice;
+var float AOEMult, NukeDamageMult;
+
+replication
+{
+	// Things the server should send to the client.
+	if ( true )
+		NukeDamageMult,bDirectHit,bCriticalHit,bProfessionalActive;
+}
+
+function float GetAoERadiusModifier()
+{
+	return AOEMult;
+}
+
+simulated function bool GetUsingTactialReload( KFWeapon KFW )
+{
+	return (IsWeaponOnPerk(KFW) ? Modifiers[5]<0.85 : false);
+}
+
+simulated function bool IsConcussiveForceActive()
+{
+	return Modifiers[7] > 1.5;
+}
+
+simulated function float ApplyEffect( name Type, float Value, float Progress )
+{
+	local ExtPlayerReplicationInfo MyPRI;
+	
+	MyPRI = ExtPlayerReplicationInfo(PlayerOwner.PlayerReplicationInfo);
+	
+	switch( Type )
+	{
+	case 'KnockDown':
+		if( MyPRI != none )
+			MyPRI.bConcussiveIsOn = IsConcussiveForceActive();
+		break;
+	}
+	
+	return Super.ApplyEffect(Type, Value, Progress);
+}
+
+function OnWaveEnded()
+{
+	bUsedSacrifice = false;
+}
+
+simulated function ModifyDamageGiven( out int InDamage, optional Actor DamageCauser, optional KFPawn_Monster MyKFPM, optional KFPlayerController DamageInstigator, optional class<KFDamageType> DamageType, optional int HitZoneIdx )
+{
+	if( BasePerk==None || (DamageType!=None && DamageType.Default.ModifierPerkList.Find(BasePerk)>=0) || (KFWeapon(DamageCauser)!=None && IsWeaponOnPerk(KFWeapon(DamageCauser))) )
+	{
+		if( bDirectHit && class<KFDT_Ballistic_Shell>(DamageType) != none )
+			InDamage *= 0.25;
+
+		if( bCriticalHit && MyKFPM != none && IsCriticalHitZone( MyKFPM, HitZoneIdx ) )
+			InDamage *= 0.5f;
+	}
+	
+	if( class<KFDT_DemoNuke_Toxic_Lingering>(DamageType) != None )
+		InDamage *= NukeDamageMult;
+	
+	Super.ModifyDamageGiven(InDamage, DamageCauser, MyKFPM, DamageInstigator, DamageType, HitZoneIdx);
+}
+
+function bool IsCriticalHitZone( KFPawn TestPawn, int HitZoneIndex )
+{
+	if( TestPawn != none && HitzoneIndex >= 0 && HitzoneIndex < TestPawn.HitZones.length )
+		return TestPawn.HitZones[HitZoneIndex].DmgScale > 1.f;
+
+	return false;
+}
+
+simulated function ModifySpareAmmoAmount( KFWeapon KFW, out int PrimarySpareAmmo, optional const out STraderItem TraderItem, optional bool bSecondary )
+{
+	if( KFW != None && KFWeap_Thrown_C4(KFW) != None )
+		PrimarySpareAmmo += (1 + Modifiers[11]);
+	
+	Super.ModifySpareAmmoAmount( KFW, PrimarySpareAmmo, TraderItem, bSecondary );
+}
+
 defaultproperties
 {
 	PerkName="Demolitionist"
@@ -8,15 +89,22 @@ defaultproperties
 	DefTraitList.Add(class'Ext_TraitBoomWeld')
 	DefTraitList.Add(class'Ext_TraitContactNade')
 	DefTraitList.Add(class'Ext_TraitSupplyGren')
+	DefTraitList.Add(class'Ext_TraitSirenResistance')
+	DefTraitList.Add(class'Ext_TraitDemoDirectHit')
+	DefTraitList.Add(class'Ext_TraitDemoCriticalHit')
+	DefTraitList.Add(class'Ext_TraitDemoAOE')
+	DefTraitList.Add(class'Ext_TraitDemoReactiveArmor')
+	DefTraitList.Add(class'Ext_TraitDemoNuke')
+	DefTraitList.Add(class'Ext_TraitDemoProfessional')
 	BasePerk=class'KFPerk_Demolitionist'
 
 	PrimaryMelee=class'KFWeap_Knife_Demolitionist'
 	PrimaryWeapon=class'KFWeap_GrenadeLauncher_HX25'
-	PerkGrenade=class'KFProj_DynamiteGrenade'
+	PerkGrenade=class'ExtProj_DynamiteGrenade'
 	
 	PrimaryWeaponDef=class'KFWeapDef_HX25'
 	KnifeWeaponDef=class'KFWeapDef_Knife_Demo'
-	GrenadeWeaponDef=class'KFWeapDef_Grenade_Demo'
+	GrenadeWeaponDef=class'ExtWeapDef_Grenade_Demo'
 	
 	AutoBuyLoadOutPath=(class'KFWeapDef_HX25', class'KFWeapDef_M79', class'KFWeapDef_M16M203', class'KFWeapDef_RPG7')
 	

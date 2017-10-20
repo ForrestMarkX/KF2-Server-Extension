@@ -14,12 +14,16 @@ var byte UnfeignFailedCount,RepRegenHP,BHopAccelSpeed;
 var repnotify bool bFeigningDeath;
 var bool bPlayingFeignDeathRecovery,bRagdollFromFalling,bRagdollFromBackhit,bRagdollFromMomentum,bCanBecomeRagdoll,bRedeadMode,bPendingRedead,bHasBunnyHop,bOnFirstPerson,bFPLegsAttached,bFPLegsInit;
 
+var byte HealingShieldMod,HealingSpeedBoostMod,HealingDamageBoostMod;
+
 replication
 {
 	if( true )
 		bFeigningDeath,RepRegenHP,BackpackWeaponClass;
 	if( bNetOwner )
 		bHasBunnyHop;
+	if( bNetDirty )
+		HealingSpeedBoostMod, HealingDamageBoostMod, HealingShieldMod;
 }
 
 function TakeDamage(int Damage, Controller InstigatedBy, vector HitLocation, vector Momentum, class<DamageType> DamageType, optional TraceHitInfo HitInfo, optional Actor DamageCauser)
@@ -111,16 +115,32 @@ event bool HealDamage(int Amount, Controller Healer, class<DamageType> DamageTyp
 	local ExtPlayerController InstigatorPC, KFPC;
 	local KFPerk InstigatorPerk;
 	local class<KFDamageType> KFDT;
-    local int i,OldHealth;
+    local int i;
     local bool bRepairedArmor;
+	local ExtPlayerReplicationInfo EPRI;
+	local Ext_PerkBase InstigatorExtPerk;
 
-    OldHealth = Health;
 	InstigatorPC = ExtPlayerController(Healer);
-	InstigatorPerk = InstigatorPC != None ? InstigatorPC.GetPerk() : None;
+	InstigatorPerk = InstigatorPC.GetPerk();
+	
 	if( InstigatorPerk != None && bCanRepairArmor )
+		bRepairedArmor = InstigatorPC.GetPerk().RepairArmor( self );
+	
+	EPRI = ExtPlayerReplicationInfo(InstigatorPC.PlayerReplicationInfo);
+	if( EPRI != none )
 	{
-		// Instigator might be able to repair some armomr
-		bRepairedArmor = InstigatorPerk.RepairArmor( self );
+		InstigatorExtPerk = ExtPlayerController(Controller).ActivePerkManager.CurrentPerk;
+		if( InstigatorExtPerk != none && Ext_PerkFieldMedic(InstigatorExtPerk) != none )
+		{
+			if( Ext_PerkFieldMedic(InstigatorExtPerk).bHealingBoost )
+				UpdateHealingSpeedBoostMod(InstigatorPC);
+
+			if( Ext_PerkFieldMedic(InstigatorExtPerk).bHealingDamageBoost )
+				UpdateHealingDamageBoostMod(InstigatorPC);
+
+			if( Ext_PerkFieldMedic(InstigatorExtPerk).bHealingShield )
+				UpdateHealingShieldMod(InstigatorPC);
+		}
 	}
 
     if( Amount > 0 && IsAliveAndWell() && Health < HealthMax )
@@ -150,10 +170,6 @@ event bool HealDamage(int Amount, Controller Healer, class<DamageType> DamageTyp
 			RepRegenHP = HealthToRegen;
 			if( !IsTimerActive('GiveHealthOverTime') )
 				SetTimer(HealthRegenRate, true, 'GiveHealthOverTime');
-			
-			// Airborne agent hack.
-			if( ExtPerkManager(InstigatorPerk)!= none && DamageType!=Class'KFDT_Healing' )
-				ExtPerkManager(InstigatorPerk).CheckForAirborneAgent(Self,DamageType,UsedHealAmount);
 
 			// Give the healer money/XP for helping a teammate
 		    if( Healer.Pawn != none && Healer.Pawn != self )
@@ -171,17 +187,13 @@ event bool HealDamage(int Amount, Controller Healer, class<DamageType> DamageTyp
 		    	{
 					if( InstigatorPC!=None )
 					{
-						//`RecordAARIntStat(InstigatorPC, HEAL_GIVEN, UsedHealAmount);
 						if( !InstigatorPC.bClientHideNumbers )
 							InstigatorPC.ClientNumberMsg(UsedHealAmount,Location,DMG_Heal);
 						InstigatorPC.ReceiveLocalizedMessage( class'KFLocalMessage_Game', GMT_HealedPlayer, PlayerReplicationInfo );
 					}
 					KFPC = ExtPlayerController(Controller);
 					if( KFPC!=None )
-					{
-						//`RecordAARIntStat(KFPC, HEAL_RECEIVED, UsedHealAmount);
 						KFPC.ReceiveLocalizedMessage( class'KFLocalMessage_Game', GMT_HealedBy, Healer.PlayerReplicationInfo );
-					}
 				}
 				else if( bMessageHealer && InstigatorPC!=None )
 					InstigatorPC.ReceiveLocalizedMessage( class'KFLocalMessage_Game', GMT_HealedSelf, PlayerReplicationInfo );
@@ -203,9 +215,6 @@ event bool HealDamage(int Amount, Controller Healer, class<DamageType> DamageTyp
                     break;
                 }
         	}
-			
-			if (Health - OldHealth > 0)
-				WorldInfo.Game.ScoreHeal(Health - OldHealth, OldHealth, Healer, self, DamageType);
 
 		    return true;
 		}
@@ -1063,6 +1072,7 @@ simulated final function SetBackpackWeapon( class<KFWeapon> WC )
 	local Rotator MyRot;
 	local Vector MyPos;
 	local name WM,B;
+	local int i;
 
 	BackpackWeaponClass = WC;
 	if( WorldInfo.NetMode==NM_DedicatedServer )
@@ -1077,47 +1087,47 @@ simulated final function SetBackpackWeapon( class<KFWeapon> WC )
 			AttachedBackItem.SetLightingChannels(PawnLightingChannel);
 		}
 		AttachedBackItem.SetSkeletalMesh(WC.Default.AttachmentArchetype.SkelMesh);
+		for( i=0; i<WC.Default.AttachmentArchetype.SkelMesh.Materials.length; i++ )
+		{
+			AttachedBackItem.SetMaterial(i, WC.Default.AttachmentArchetype.SkelMesh.Materials[i]);
+		}
+		
 		Mesh.DetachComponent(AttachedBackItem);
 		
 		MyCharacter = KFPlayerReplicationInfo(PlayerReplicationInfo).CharacterArchetypes[KFPlayerReplicationInfo(PlayerReplicationInfo).RepCustomizationInfo.CharacterIndex];
 		WM = WC.Default.AttachmentArchetype.SkelMesh.Name;
-		switch( WM )
+		
+		if( ClassIsChildOf(WC, class'KFWeap_Edged_Knife') )
 		{
-		case 'Wep_3rdP_Welder_Rig':
-		case 'Wep_3rdP_Healer_Rig':
-		case 'Wep_3rdP_Medic_SMG_Rig':
-		case 'Wep_3rdP_9mm_Rig':
-		case 'Wep_3rdP_Medic_Pistol_Rig':
+			MyPos = vect(0,0,10);
+			MyRot = rot(-16384,-8192,0);
+			B = 'LeftUpLeg';
+		}
+		else if( class<KFWeap_Welder>(WC) != none || class<KFWeap_Healer_Syringe>(WC) != none || class<KFWeap_Pistol_Medic>(WC) != none || class<KFWeap_SMG_Medic>(WC) != none || ClassIsChildOf(WC, class'KFWeap_PistolBase') || ClassIsChildOf(WC, class'KFWeap_SMGBase') || ClassIsChildOf(WC, class'KFWeap_ThrownBase') )
+		{
 			MyPos = vect(0,0,10);
 			MyRot = rot(0,0,16384);
 
 			B = 'LeftUpLeg';
-			break;
-		case 'Wep_3rdP_Katana_Rig':
-		case 'Wep_3rdP_Crovel_Rig':
-		case 'Wep_3rdP_Pulverizer_Rig':
+		}
+		else if( ClassIsChildOf(WC, class'KFWeap_MeleeBase') )
+		{
 			MyPos = vect(-5,15,0);
 			MyRot = rot(0,0,0);
 			
-			switch( WM )
-			{
-			case 'Wep_3rdP_Katana_Rig':
+			if( class<KFWeap_Edged_Katana>(WC) != none || class<KFWeap_Edged_Zweihander>(WC) != none )
 				MyPos.Z = -20;
-				break;
-			}
+				
 			B = 'Spine';
-			break;
-		case 'Wep_3rdP_CommandoKnife_Rig':
-			MyPos = vect(0,0,10);
-			MyRot = rot(-16384,-8192,0);
-			B = 'LeftUpLeg';
-			break;
-		default:
+		}
+		else
+		{
 			MyPos = vect(-18.5,16.5,-18);
 			MyRot = rot(0,0,0);
 
 			if( MyCharacter == KFCharacterInfo_Human'CHR_Playable_ARCH.chr_DJSkully_archetype' )
 				MyRot.Roll = 8192;
+				
 			switch( WM )
 			{
 			case 'Wep_3rdP_MB500_Rig':
@@ -1130,7 +1140,11 @@ simulated final function SetBackpackWeapon( class<KFWeapon> WC )
 				MyPos.X = -75;
 				MyRot.Roll = 16384;
 				break;
+			case 'Wep_3rdP_RPG7_Rig':
+				MyPos.X = 10;
+				break;
 			}
+			
 			B = 'Spine2';
 		}
 
@@ -1179,6 +1193,104 @@ simulated function PlayWeaponSwitch(Weapon OldWeapon, Weapon NewWeapon)
 	}
 }
 
+simulated function UpdateHealingSpeedBoostMod(ExtPlayerController Healer)
+{
+	local Ext_PerkFieldMedic MedPerk;
+	
+	MedPerk = GetMedicPerk(Healer);
+	if( MedPerk == None )
+		return;
+	
+	HealingSpeedBoostMod = Min( HealingSpeedBoostMod + MedPerk.GetHealingSpeedBoost(), MedPerk.GetMaxHealingSpeedBoost() );
+	SetTimer( MedPerk.GetHealingSpeedBoostDuration(),, nameOf(ResetHealingSpeedBoost) );
+	
+	UpdateGroundSpeed();
+}
+
+simulated function float GetHealingSpeedModifier()
+{
+	return 1 + (float(HealingSpeedBoostMod) / 100);
+}
+
+simulated function ResetHealingSpeedBoost()
+{
+	HealingSpeedBoostMod = 0;
+	UpdateGroundSpeed();
+
+	if( IsTimerActive( nameOf( ResetHealingSpeedBoost ) ) )
+		ClearTimer( nameOf( ResetHealingSpeedBoost ) );
+}
+
+simulated function UpdateHealingDamageBoostMod(ExtPlayerController Healer)
+{
+	local Ext_PerkFieldMedic MedPerk;
+	
+	MedPerk = GetMedicPerk(Healer);
+	if( MedPerk == None )
+		return;
+		
+	HealingDamageBoostMod = Min( HealingDamageBoostMod + MedPerk.GetHealingDamageBoost(), MedPerk.GetMaxHealingDamageBoost() );
+	SetTimer( MedPerk.GetHealingDamageBoostDuration(),, nameOf(ResetHealingDamageBoost) );
+}
+
+simulated function float GetHealingDamageBoostModifier()
+{
+	return 1 + (float(HealingDamageBoostMod) / 100);
+}
+
+simulated function ResetHealingDamageBoost()
+{
+	HealingDamageBoostMod = 0;
+	if( IsTimerActive( nameOf( ResetHealingDamageBoost ) ) )
+		ClearTimer( nameOf( ResetHealingDamageBoost ) );
+}
+
+simulated function UpdateHealingShieldMod(ExtPlayerController Healer)
+{
+	local Ext_PerkFieldMedic MedPerk;
+	
+	MedPerk = GetMedicPerk(Healer);
+	if( MedPerk == None )
+		return;
+		
+	HealingShieldMod = Min( HealingShieldMod + MedPerk.GetHealingShield(), MedPerk.GetMaxHealingShield() );
+	SetTimer( MedPerk.GetHealingShieldDuration(),, nameOf(ResetHealingShield) );
+}
+
+simulated function float GetHealingShieldModifier()
+{
+	return 1 - (float(HealingShieldMod) / 100);
+}
+
+simulated function ResetHealingShield()
+{
+	HealingShieldMod = 0;
+	if( IsTimerActive( nameOf( ResetHealingShield ) ) )
+		ClearTimer( nameOf( ResetHealingShield ) );
+}
+
+function SacrificeExplode()
+{
+	local Ext_PerkDemolition DemoPerk;
+	
+	Super.SacrificeExplode();
+	
+	DemoPerk = Ext_PerkDemolition(ExtPlayerController(Controller).ActivePerkManager.CurrentPerk);
+	if( DemoPerk != none )
+		DemoPerk.bUsedSacrifice = true;
+}
+
+simulated function Ext_PerkFieldMedic GetMedicPerk(ExtPlayerController Healer)
+{
+	local Ext_PerkFieldMedic MedPerk;
+	
+	MedPerk = Ext_PerkFieldMedic(ExtPlayerController(Controller).ActivePerkManager.CurrentPerk);
+	if( MedPerk != None ) 
+		return MedPerk;
+		
+	return None;
+}
+
 defaultproperties
 {
 	KnockbackResist=1
@@ -1189,8 +1301,12 @@ defaultproperties
 	InventoryManagerClass=class'ExtInventoryManager'
 	WakeUpAnimSet=AnimSet'ZED_Clot_Anim.Alpha_Clot_Master'
 	
+	Begin Object Name=SpecialMoveHandler_0
+		SpecialMoveClasses(SM_Emote)=class'ServerExt.ExtSM_Player_Emote'
+	End Object
+	
 	DefaultInventory.Empty()
-	DefaultInventory.Add(class'KFWeap_Pistol_9mm')
+	DefaultInventory.Add(class'ExtWeap_Pistol_9mm')
 	DefaultInventory.Add(class'KFWeap_Healer_Syringe')
 	DefaultInventory.Add(class'KFWeap_Welder')
 	DefaultInventory.Add(class'KFInventory_Money')

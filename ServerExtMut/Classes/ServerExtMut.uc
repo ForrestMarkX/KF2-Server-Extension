@@ -290,6 +290,8 @@ function CheckWave()
 }
 function NotifyWaveChange()
 {
+	local ExtPlayerController ExtPC;
+	
 	if( bRespawnCheck )
 	{
 		bIsPostGame = (KF.WaveMax<KF.WaveNum);
@@ -301,6 +303,12 @@ function NotifyWaveChange()
 	{
 		NumWaveSwitches = 0;
 		SaveAllPerks();
+	}
+	
+	if( !KF.bTraderIsOpen )
+	{
+		foreach WorldInfo.AllControllers(class'ExtPlayerController',ExtPC)
+			ExtPC.bSetPerk = false;
 	}
 }
 function SetupWebAdmin()
@@ -350,6 +358,9 @@ function AddMutator(Mutator M)
 }
 function ScoreKill(Controller Killer, Controller Killed)
 {
+	local KFPlayerController KFPC;
+	local ExtPerkManager KillersPerk;
+	
 	if( bRespawnCheck && Killed.bIsPlayer )
 		CheckRespawn(Killed);
 	if( KFPawn_Monster(Killed.Pawn)!=None && Killed.GetTeamNum()!=0 && Killer.bIsPlayer && Killer.GetTeamNum()==0 )
@@ -360,6 +371,19 @@ function ScoreKill(Controller Killer, Controller Killed)
 			BroadcastKillMessage(Killed.Pawn,Killer);
 		//else if( Killer!=None && Killer!=Killed && Killer.GetTeamNum()==0 && Ext_T_MonsterPRI(Killer.PlayerReplicationInfo)!=None )
 		//	BroadcastKillMessage(Killed.Pawn,Ext_T_MonsterPRI(Killer.PlayerReplicationInfo).OwnerController);
+	}
+	if ( MyKFGI != None && MyKFGI.IsZedTimeActive() && KFPawn_Monster(Killed.Pawn) != None )
+	{
+		KFPC = KFPlayerController(Killer);
+		if ( KFPC != none )
+		{
+			KillersPerk = ExtPerkManager(KFPC.GetPerk());
+			if ( MyKFGI.ZedTimeRemaining > 0.f && KillersPerk != none && KillersPerk.GetZedTimeExtensions( KFPC.GetLevel() ) > MyKFGI.ZedTimeExtensionsUsed )
+			{
+				MyKFGI.DramaticEvent(1.0);
+				MyKFGI.ZedTimeExtensionsUsed++;
+			}
+		}
 	}
 	if( ExtPlayerController(Killed)!=None )
 		CheckPerkChange(ExtPlayerController(Killed));
@@ -468,23 +492,31 @@ function NetDamage(int OriginalDamage, out int Damage, Pawn Injured, Controller 
 	}
 	if( Damage>0 && InstigatedBy!=None )
 	{
-		if( KFPawn_Monster(Injured)!=None && Injured.GetTeamNum()!=0 )
+		if( KFPawn_Monster(Injured)!=None )
 		{
-			LastDamageDealer = ExtPlayerController(InstigatedBy);
-			if( bDamageMessages && LastDamageDealer!=None && !LastDamageDealer.bNoDamageTracking )
+			if( Injured.GetTeamNum()!=0 )
 			{
-				// Must delay this until next to get accurate damage dealt result.
-				LastHitZed = KFPawn(Injured);
-				LastHitHP = LastHitZed.Health;
-				LastDamagePosition = HitLocation;
-				SetTimer(0.001,false,'CheckDamageDone');
+				LastDamageDealer = ExtPlayerController(InstigatedBy);
+				if( bDamageMessages && LastDamageDealer!=None && !LastDamageDealer.bNoDamageTracking )
+				{
+					// Must delay this until next to get accurate damage dealt result.
+					LastHitZed = KFPawn(Injured);
+					LastHitHP = LastHitZed.Health;
+					LastDamagePosition = HitLocation;
+					SetTimer(0.001,false,'CheckDamageDone');
+				}
+				else
+				{
+					LastDamageDealer = None;
+					// Give credits to pet's owner.
+					if( Ext_T_MonsterPRI(InstigatedBy.PlayerReplicationInfo)!=None )
+						HackSetHistory(KFPawn(Injured),Injured,Ext_T_MonsterPRI(InstigatedBy.PlayerReplicationInfo).OwnerController,Damage,HitLocation);
+				}
 			}
-			else
+			else if( KFPawn(InstigatedBy.Pawn).GetTeamNum() != KFPawn(Injured).GetTeamNum() )
 			{
-				LastDamageDealer = None;
-				// Give credits to pet's owner.
-				if( Ext_T_MonsterPRI(InstigatedBy.PlayerReplicationInfo)!=None )
-					HackSetHistory(KFPawn(Injured),Injured,Ext_T_MonsterPRI(InstigatedBy.PlayerReplicationInfo).OwnerController,Damage,HitLocation);
+				Momentum = vect(0,0,0);
+				Damage = 0;
 			}
 		}
 		else if( bDamageMessages && KFPawn_Human(Injured)!=None && Injured.GetTeamNum()==0 && InstigatedBy.GetTeamNum()!=0 && ExtPlayerController(InstigatedBy)!=None )
@@ -1026,15 +1058,20 @@ function PlayerChangePerk( ExtPlayerController PC, class<Ext_PerkBase> NewPerk )
 			PC.PendingPerkClass = None;
 		}
 	}
-	else if( PC.ActivePerkManager.CurrentPerk==None || PC.Pawn==None || !PC.Pawn.IsAliveAndWell() )
+	else if( PC.ActivePerkManager.CurrentPerk==None || KFPawn_Customization(PC.Pawn)!=None || (!PC.bSetPerk && KFGameReplicationInfo(WorldInfo.GRI).bTraderIsOpen) )
 	{
 		if( PC.ActivePerkManager.ApplyPerkClass(NewPerk) )
+		{
 			PC.ClientMessage("You have changed your perk to "$NewPerk.Default.PerkName);
+			PC.bSetPerk = true;
+		}
 		else PC.ClientMessage("Invalid perk "$NewPerk.Default.PerkName);
 	}
+	else if( PC.bSetPerk )
+		PC.ClientMessage("Can only change perks once per wave");
 	else
 	{
-		PC.ClientMessage("You will change to perk '"$NewPerk.Default.PerkName$"' next time you have died.");
+		PC.ClientMessage("You will change to perk '"$NewPerk.Default.PerkName$"' during trader time.");
 		PC.PendingPerkClass = NewPerk;
 	}
 }
@@ -1043,10 +1080,28 @@ function CheckPerkChange( ExtPlayerController PC )
 	if( PC.PendingPerkClass!=None )
 	{
 		if( PC.ActivePerkManager.ApplyPerkClass(PC.PendingPerkClass) )
+		{
 			PC.ClientMessage("You have changed your perk to "$PC.PendingPerkClass.Default.PerkName);
+			PC.bSetPerk = true;
+		}
 		else PC.ClientMessage("Invalid perk "$PC.PendingPerkClass.Default.PerkName);
 		PC.PendingPerkClass = None;
 	}
+}
+function Tick(float DeltaTime)
+{
+	local bool bCheckedWave;
+	local ExtPlayerController ExtPC;
+	
+	if( KFGameReplicationInfo(WorldInfo.GRI).bTraderIsOpen && !bCheckedWave )
+	{
+		foreach WorldInfo.AllControllers(class'ExtPlayerController',ExtPC)
+			CheckPerkChange(ExtPC);
+			
+		bCheckedWave = true;
+	}
+	else if( bCheckedWave )
+		bCheckedWave = false;
 }
 function PlayerBoughtTrait( ExtPlayerController PC, class<Ext_PerkBase> PerkClass, class<Ext_TraitBase> Trait )
 {

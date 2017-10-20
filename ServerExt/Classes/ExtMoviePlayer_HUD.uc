@@ -105,4 +105,6 @@ defaultproperties
 	WidgetBindings.Add((WidgetName="WaveInfoContainer",WidgetClass=class'ExtHUD_WaveInfo'))
 	WidgetBindings.Remove((WidgetName="bossHealthBar", WidgetClass=class'KFGFxWidget_BossHealthBar'))
 	WidgetBindings.Add((WidgetName="bossHealthBar", WidgetClass=class'ExtWidget_BossHealthBar'))
+	WidgetBindings.Remove((WidgetName="WeaponSelectContainer",WidgetClass=class'KFGFxHUD_WeaponSelectWidget'))
+	WidgetBindings.Add((WidgetName="WeaponSelectContainer",WidgetClass=class'ExtHUD_WeaponSelectWidget'))
 }

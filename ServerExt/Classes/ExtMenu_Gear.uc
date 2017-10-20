@@ -16,7 +16,7 @@ function InitializeMenu( KFGFxMoviePlayer_Manager InManager )
 {
 	super(KFGFxObject_Menu).InitializeMenu(InManager);
 	LocalizeText();
-	EmoteList = class'KFEmoteList'.static.GetEmoteArray();
+	EmoteList = class'ExtEmoteList'.static.GetEmoteArray();
 	InitCharacterMenu();
 	TraderItems = KFGameReplicationInfo( GetPC().WorldInfo.GRI ).TraderItems;
 }
@@ -113,7 +113,7 @@ function UpdateEmoteList()
 
 	for (i = 0; i < EmoteList.length; i++)
 	{
-		if ( class'KFEmoteList'.static.GetUnlockedEmote(EmoteList[i].Id) != 'NONE')
+		if ( class'ExtEmoteList'.static.GetUnlockedEmote(EmoteList[i].Id, ExtPlayerController(GetPC())) != 'NONE')
 		{
 			SlotObject = CreateObject( "Object" );
 			SlotObject.SetInt("ItemIndex", i);
@@ -210,48 +210,76 @@ function UpdateMeshList(string OutfitKey, string SkinKey, array<OutfitVariants> 
 {
 	local byte i, ItemIndex;
 	local GFxObject DataProvider, SlotObject;
-	local string TexturePath;
+	local string TexturePath, OutfitName;
 	local OutfitVariants Outfit;
-
+	local SkinVariant FirstSkin;
+	
 	ItemIndex = 0;
 	DataProvider = CreateArray();
-
 	for (i = 0; i < Outfits.length; i++)
 	{
 		Outfit = Outfits[i];
+		
+		OutfitName = Localize(CharInfoPath, OutfitKey$i, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString);
 		if( bIsCustomChar )
-		{
-			SlotObject = CreateObject( "Object" );
-			SlotObject.SetInt("ItemIndex", i);
-			SlotObject.SetString("label", GetMenuNameStr(Outfit.MeshName));
-			SlotObject.SetBool("enabled", true);
+			OutfitName = GetMenuNameStr(Outfit.MeshName);
+			
+		if ( InStr(OutfitName, "?INT?") != -1 )
+			continue;
+		
+		SlotObject = CreateObject( "Object" );
+		SlotObject.SetInt("ItemIndex", i);
+		SlotObject.SetString("label", OutfitName);
+		SlotObject.SetBool("enabled", true);
+		FirstSkin = UpdateOutfitVariants( OutfitKey, SkinKey, Outfit.SkinVariations, i, SlotObject );
+		if( string(FirstSkin.UITexture) == "Bad" )
+			continue;
+			
+		TexturePath = "img://"$PathName(FirstSkin.UITexture);
+		SlotObject.SetString("source", TexturePath);
 
-			TexturePath = "img://"$PathName(Outfit.UITexture);
-			SlotObject.SetString("source", TexturePath);
-
-			UpdateVariants( OutfitKey, SkinKey, Outfit.SkinVariations, i, SlotObject );
-
-			DataProvider.SetElementObject(ItemIndex, SlotObject);
-			ItemIndex++;
-		}
-		else
-		{
-			SlotObject = CreateObject( "Object" );
-			SlotObject.SetInt("ItemIndex", i);
-			SlotObject.SetString("label", Localize(CharInfoPath, OutfitKey$i, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString));
-			SlotObject.SetBool("enabled", true);
-
-			TexturePath = "img://"$PathName(Outfit.UITexture);
-			SlotObject.SetString("source", TexturePath);
-
-			UpdateVariants( OutfitKey, SkinKey, Outfit.SkinVariations, i, SlotObject );
-
-			DataProvider.SetElementObject(ItemIndex, SlotObject);
-			ItemIndex++;
-		}
+		DataProvider.SetElementObject(ItemIndex, SlotObject);
+		ItemIndex++;
 	}
 	
 	SetObject(DataArrayString, DataProvider);
+}
+
+function SkinVariant UpdateOutfitVariants(string OutfitKey, string KeyName, out array<SkinVariant> SkinVariations, int OutfitIndex, out GFxObject MeshObject)
+{
+	local byte i, ItemIndex;
+	local GFxObject DataProvider, SlotObject;
+	local SkinVariant Skin;
+	local SkinVariant FirstSkin;
+	local string SectionPath;
+	local string TexturePath;
+	local bool bFoundFirst;
+
+	ItemIndex = 0;
+	DataProvider = CreateArray();
+	SectionPath = CharInfoPath$"."$OutfitKey$OutfitIndex;	
+
+	for (i = 0; i < SkinVariations.length; i++)
+	{
+		Skin = SkinVariations[i];
+		if(!bFoundFirst)
+		{
+			FirstSkin = Skin;
+			bFoundFirst = true;
+		}
+		SlotObject = CreateObject( "Object" );
+		SlotObject.SetInt("ItemIndex", i);
+		SlotObject.SetString("label", Localize(SectionPath, KeyName$i, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString));
+		TexturePath = "img://"$PathName(Skin.UITexture);
+		SlotObject.SetBool("enabled", true);
+		SlotObject.SetString("source", TexturePath);
+
+		DataProvider.SetElementObject(ItemIndex, SlotObject);
+		ItemIndex++;
+	}
+	MeshObject.SetObject("skinInfo", DataProvider);
+
+	return FirstSkin;
 }
 
 function UpdateAttachmentsList(array<AttachmentVariants> Attachments)
@@ -260,7 +288,9 @@ function UpdateAttachmentsList(array<AttachmentVariants> Attachments)
 	local GFxObject DataProvider, SlotObject;
 	local string TexturePath;
 	local AttachmentVariants Variant;
-
+	local SkinVariant FirstSkin;
+	local string AttachmentName;
+	
 	ItemIndex = 0;
 	DataProvider = CreateArray();
 
@@ -275,80 +305,67 @@ function UpdateAttachmentsList(array<AttachmentVariants> Attachments)
 	for (i = 0; i < Attachments.length; i++)
 	{
 		Variant = Attachments[i];
+		
+		AttachmentName = Localize(string(Variant.AttachmentItem.Name), class'KFGFxMenu_Gear'.Default.AttachmentKey,  class'KFGFxMenu_Gear'.Default.KFCharacterInfoString);
 		if( bIsCustomChar )
-		{
-			SlotObject = CreateObject( "Object" );
-			SlotObject.SetInt("ItemIndex", i);
-			SlotObject.SetString("label", GetMenuNameStr(Variant.MeshName));
-			SlotObject.SetBool("enabled", true);
+			AttachmentName = GetMenuNameStr(Variant.MeshName);
+			
+		if ( InStr(AttachmentName, "?INT?") != -1 )
+			continue;
 
-			TexturePath = "img://"$PathName(Variant.UITexture);
-			SlotObject.SetString("source", TexturePath);
-			UpdateVariants( class'KFGFxMenu_Gear'.Default.AttachmentKey, class'KFGFxMenu_Gear'.Default.AttachmentSkinKey, Variant.SkinVariations, i, SlotObject );
-
-			DataProvider.SetElementObject(ItemIndex, SlotObject);
-			ItemIndex++;
-		}
-		else
-		{
-			SlotObject = CreateObject( "Object" );
-			SlotObject.SetInt("ItemIndex", i);
-			SlotObject.SetString("label", Localize(CharInfoPath, class'KFGFxMenu_Gear'.Default.AttachmentKey$i, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString));
-			SlotObject.SetBool("enabled", true);
-
-			TexturePath = "img://"$PathName(Variant.UITexture);
-			SlotObject.SetString("source", TexturePath);
-			UpdateVariants( class'KFGFxMenu_Gear'.Default.AttachmentKey, class'KFGFxMenu_Gear'.Default.AttachmentSkinKey, Variant.SkinVariations, i, SlotObject );
-
-			DataProvider.SetElementObject(ItemIndex, SlotObject);
-			ItemIndex++;
-		}
+		SlotObject = CreateObject( "Object" );
+		SlotObject.SetInt("ItemIndex", i);
+		FirstSkin = UpdateCosmeticVariants( class'KFGFxMenu_Gear'.Default.AttachmentKey, class'KFGFxMenu_Gear'.Default.AttachmentSkinKey, Variant.AttachmentItem, i, SlotObject );
+		if( string(FirstSkin.UITexture) == "Bad" )
+			continue;
+			
+		SlotObject.SetString("label", AttachmentName);
+		SlotObject.SetBool("enabled", true);
+		TexturePath = "img://"$PathName(FirstSkin.UITexture);
+		SlotObject.SetString("source", TexturePath);
+		
+		DataProvider.SetElementObject(ItemIndex, SlotObject);
+		ItemIndex++;
 	}
 	
 	SetObject("attachmentsArray", DataProvider);
 }
 
-function UpdateVariants(string OutfitKey, string KeyName, out array<SkinVariant> SkinVariations, int OutfitIndex, out GFxObject MeshObject)
+function SkinVariant UpdateCosmeticVariants(string OutfitKey, string KeyName, KFCharacterAttachment Attachment, int OutfitIndex, out GFxObject MeshObject)
 {
 	local byte i, ItemIndex;
 	local GFxObject DataProvider, SlotObject;
 	local SkinVariant Skin;
-	local string SectionPath;
+	local SkinVariant FirstSkin;
 	local string TexturePath;
+	local bool bFoundFirst;
+	local string SkinName;
 
 	ItemIndex = 0;
 	DataProvider = CreateArray();
-	SectionPath = CharInfoPath$"."$OutfitKey$OutfitIndex;	
 
-	for (i = 0; i < SkinVariations.length; i++)
+	for (i = 0; i < Attachment.SkinVariations.length; i++)
 	{
-		Skin = SkinVariations[i];
-		if( bIsCustomChar )
+		Skin = Attachment.SkinVariations[i];
+		if(!bFoundFirst)
 		{
-			SlotObject = CreateObject( "Object" );
-			SlotObject.SetInt("ItemIndex", i);
-			SlotObject.SetString("label", GetMenuName(Skin.Skin));
-			SlotObject.SetBool("enabled", true);
-			TexturePath = "img://"$PathName(Skin.UITexture);
-			SlotObject.SetString("source", TexturePath);
-
-			DataProvider.SetElementObject(ItemIndex, SlotObject);
-			ItemIndex++;
+			FirstSkin = Skin;
+			bFoundFirst = true;
 		}
-		else
-		{
-			SlotObject = CreateObject( "Object" );
-			SlotObject.SetInt("ItemIndex", i);
-			SlotObject.SetString("label", Localize(SectionPath, KeyName$i, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString));
-			SlotObject.SetBool("enabled", true);
-			TexturePath = "img://"$PathName(Skin.UITexture);
-			SlotObject.SetString("source", TexturePath);
+		SlotObject = CreateObject( "Object" );
+		SlotObject.SetInt("ItemIndex", i);
+		SkinName = Localize(string(Attachment.Name), KeyName$i, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString);
+		SlotObject.SetString("label", SkinName);
+		TexturePath = "img://"$PathName(Skin.UITexture);
+		SlotObject.SetBool("enabled", true);
+		SlotObject.SetString("source", TexturePath);
 
-			DataProvider.SetElementObject(ItemIndex, SlotObject);
-			ItemIndex++;
-		}
+		DataProvider.SetElementObject(ItemIndex, SlotObject);
+		ItemIndex++;
 	}
 	MeshObject.SetObject("skinInfo", DataProvider);
+
+	return FirstSkin;
 }
 
 function SetCurrentCharacterButtons()
@@ -380,7 +397,7 @@ function SetEmoteButton()
 	local GFxObject DataObject;
 	local int EmoteIndex;
 
-	EmoteIndex = class'KFEmoteList'.static.GetEmoteIndex( class'KFEmoteList'.static.GetEquippedEmoteId());
+	EmoteIndex = class'ExtEmoteList'.static.GetEmoteIndex( class'ExtEmoteList'.static.GetEquippedEmoteId(ExtPlayerController(GetPC())));
 
 	DataObject = CreateObject("Object");
 	if(EmoteIndex == 255)
@@ -448,7 +465,7 @@ function SetGearButtons(byte MeshIndex, byte SkinIndex, string MeshKey, string S
 /** Update the labels for our currently equipped attachments */
 function SetAttachmentButtons(string AttachmentMeshKey, string sectionFunctionName)
 {
-	local string CurrentMesh, FinishedString;
+	local string FinishedString;
 	local GFxObject DataObject;
 	local byte i, AttachmentIndex;
 	local bool bCustom;
@@ -468,8 +485,7 @@ function SetAttachmentButtons(string AttachmentMeshKey, string sectionFunctionNa
 		}
 		else
 		{
-			CurrentMesh = AttachmentMeshKey$AttachmentIndex;
-			FinishedString $= (bIsCustomChar ? GetMenuNameStr(CurrentCharInfo.CosmeticVariants[AttachmentIndex].MeshName) : Localize(CharInfoPath, CurrentMesh, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString))$"\n";
+			FinishedString $= (bIsCustomChar ? GetMenuNameStr(CurrentCharInfo.CosmeticVariants[AttachmentIndex].MeshName) : Localize(string(CurrentCharInfo.CosmeticVariants[AttachmentIndex].AttachmentItem.Name), AttachmentMeshKey, class'KFGFxMenu_Gear'.Default.KFCharacterInfoString)$"\n");
 		}
 	}
 
@@ -522,11 +538,11 @@ function Callback_Emote(byte Index)
 	KFPC = KFPlayerController(GetPC());
 	if( KFPC != none )
 	{
-		class'KFEmoteList'.static.SaveEquippedEmote(EmoteList[Index].ID);
+		class'ExtEmoteList'.static.SaveEquippedEmote(EmoteList[Index].ID, ExtPlayerController(KFPC));
 
-		if ( KFPawn_Customization(KFPC.Pawn) != none )
+		if ( ExtPawn_Customization(KFPC.Pawn) != none )
 		{
-			KFPawn_Customization(KFPC.Pawn).PlayEmoteAnimation();
+			ExtPawn_Customization(KFPC.Pawn).PlayEmoteAnimation();
 		}
 	}
 

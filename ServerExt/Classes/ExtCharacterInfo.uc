@@ -191,13 +191,15 @@ static final function SetHeadMeshAndSkin( KFCharacterInfo_Human C,
 	byte CurrentHeadSkinIndex,
 	KFPawn KFP )
 {
+	local string CharHeadMeshName;
 	local SkeletalMesh CharHeadMesh;
 
 	if ( C.HeadVariants.length > 0 )
 	{
 		CurrentHeadMeshIndex = (CurrentHeadMeshIndex < C.HeadVariants.length) ? CurrentHeadMeshIndex : 0;
 
-		CharHeadMesh = SkeletalMesh(SafeLoadObject(C.HeadVariants[CurrentHeadMeshIndex].MeshName, class'SkeletalMesh'));
+		CharHeadMeshName = C.HeadVariants[CurrentHeadMeshIndex].MeshName;
+		CharHeadMesh = SkeletalMesh(DynamicLoadObject(CharHeadMeshName, class'SkeletalMesh'));
 
 		// Parent the third person head mesh to the body mesh
 		KFP.ThirdPersonHeadMeshComponent.SetSkeletalMesh(CharHeadMesh);
@@ -223,17 +225,16 @@ static final function SetAttachmentSkinMaterial( KFCharacterInfo_Human C,
 	KFPawn KFP)
 {
 	local int i;
-
 	if (KFP.WorldInfo.NetMode != NM_DedicatedServer)
 	{
-		if( CurrentVariant.SkinVariations.length > 0 )
+		if( CurrentVariant.AttachmentItem.SkinVariations.length > 0 )
 		{
 			// Assign a skin to the attachment mesh as a material override
-			if ( NewSkinIndex < CurrentVariant.SkinVariations.length )
+			if ( NewSkinIndex < CurrentVariant.AttachmentItem.SkinVariations.length )
 			{
 				KFP.ThirdPersonAttachments[PawnAttachmentIndex].SetMaterial(
-					CurrentVariant.SkinMaterialID,
-					CurrentVariant.SkinVariations[NewSkinIndex].Skin);
+					CurrentVariant.AttachmentItem.SkinMaterialID,
+					CurrentVariant.AttachmentItem.SkinVariations[NewSkinIndex].Skin);
 			}
 			else
 			{
@@ -273,7 +274,9 @@ static final function SetAttachmentMeshAndSkin( KFCharacterInfo_Human C,
 	local int AttachmentSlotIndex;
 
 	if (KFP.WorldInfo.NetMode == NM_DedicatedServer)
+	{
 		return;
+	}
 
 	// Clear any previously attachments for the same slot
 	//DetachConflictingAttachments(CurrentAttachmentMeshIndex, KFP, KFPRI);
@@ -282,33 +285,35 @@ static final function SetAttachmentMeshAndSkin( KFCharacterInfo_Human C,
 
 	// Since cosmetic attachments are optional, do not choose index 0 if none is
 	// specified unlike the the head and body meshes
-	if ( C.CosmeticVariants.length > 0 && CurrentAttachmentMeshIndex < C.CosmeticVariants.length )
+	if ( C.CosmeticVariants.length > 0 &&
+		 CurrentAttachmentMeshIndex < C.CosmeticVariants.length )
 	{
 		// Cache values from character info
-		CharAttachmentMeshName = C.CosmeticVariants[CurrentAttachmentMeshIndex].MeshName;
-		CharAttachmentSocketName = C.CosmeticVariants[CurrentAttachmentMeshIndex].SocketName;
-		MaxDrawDistance = C.CosmeticVariants[CurrentAttachmentMeshIndex].MaxDrawDistance;
+		CharAttachmentMeshName = C.GetMeshByIndex(CurrentAttachmentMeshIndex);
+		CharAttachmentSocketName = C.CosmeticVariants[CurrentAttachmentMeshIndex].AttachmentItem.SocketName;
+		MaxDrawDistance = C.CosmeticVariants[CurrentAttachmentMeshIndex].AttachmentItem.MaxDrawDistance;
 		AttachmentLocationRelativeToSocket = C.CosmeticVariants[CurrentAttachmentMeshIndex].RelativeTranslation;
 		AttachmentRotationRelativeToSocket = C.CosmeticVariants[CurrentAttachmentMeshIndex].RelativeRotation;
 		AttachmentScaleRelativeToSocket = C.CosmeticVariants[CurrentAttachmentMeshIndex].RelativeScale;
-		bIsSkeletalAttachment = C.CosmeticVariants[CurrentAttachmentMeshIndex].bIsSkeletalAttachment;
+		bIsSkeletalAttachment = C.CosmeticVariants[CurrentAttachmentMeshIndex].AttachmentItem.bIsSkeletalAttachment;
 
+		// If previously attached and we could have changed outfits (e.g. local player UI) then re-validate
+		// required skeletal mesh socket.  Must be after body mesh DLO, but before AttachComponent.
+		if ( KFP.IsLocallyControlled() )
+		{
+			if ( CharAttachmentSocketName != '' && KFP.Mesh.GetSocketByName(CharAttachmentSocketName) == None )
+			{
+				C.RemoveAttachmentMeshAndSkin(AttachmentSlotIndex, KFP, KFPRI);
+				return;
+			}
+		}
+
+		//`log("AttachmentLocationRelativeToSocket: x="$AttachmentLocationRelativeToSocket.x@"y="$AttachmentLocationRelativeToSocket.y@"z="$AttachmentLocationRelativeToSocket.z);
 		// If it is a skeletal attachment, parent anim it to the body mesh
 		if( bIsSkeletalAttachment )
 		{
 			if( SkeletalMeshComponent(KFP.ThirdPersonAttachments[AttachmentSlotIndex]) != none )
 			{
-				// If previously attached and we could have changed outfits (e.g. local player UI) then re-validate
-				// required skeletal mesh socket.  Must be after body mesh DLO, but before AttachComponent.
-				if ( KFP.IsLocallyControlled() )
-				{
-					if ( CharAttachmentSocketName != '' && KFP.Mesh.GetSocketByName(CharAttachmentSocketName) == None )
-					{
-						C.RemoveAttachmentMeshAndSkin(AttachmentSlotIndex, KFP, KFPRI);
-						return;
-					}
-				}
-
 				SkeletalAttachment = SkeletalMeshComponent(KFP.ThirdPersonAttachments[AttachmentSlotIndex]);
 			}
 			else
@@ -319,7 +324,7 @@ static final function SetAttachmentMeshAndSkin( KFCharacterInfo_Human C,
 			}
 
 			// Load and assign skeletal mesh
-			CharacterAttachmentSkelMesh = SkeletalMesh(SafeLoadObject(CharAttachmentMeshName, class'SkeletalMesh'));
+			CharacterAttachmentSkelMesh = SkeletalMesh(DynamicLoadObject(CharAttachmentMeshName, class'SkeletalMesh'));
 			SkeletalAttachment.SetSkeletalMesh(CharacterAttachmentSkelMesh);
 
 			// Parent animation and LOD transitions to body mesh
@@ -348,7 +353,7 @@ static final function SetAttachmentMeshAndSkin( KFCharacterInfo_Human C,
 			}
 
 			// Load and assign static mesh
-			CharAttachmentStaticMesh = StaticMesh(SafeLoadObject(CharAttachmentMeshName, class'StaticMesh'));
+			CharAttachmentStaticMesh = StaticMesh(DynamicLoadObject(CharAttachmentMeshName, class'StaticMesh'));
 			StaticAttachment.SetStaticMesh(CharAttachmentStaticMesh);
 
 			// Set properties
@@ -371,12 +376,13 @@ static final function SetAttachmentMeshAndSkin( KFCharacterInfo_Human C,
 		KFP.ThirdPersonAttachmentBitMask = KFP.ThirdPersonAttachmentBitMask | (1 << AttachmentSlotIndex);
 		KFP.ThirdPersonAttachmentSocketNames[AttachmentSlotIndex] = CharAttachmentSocketName;
 
-		SetAttachmentSkinMaterial(C,
+		SetAttachmentSkinMaterial(
+			C,
 			AttachmentSlotIndex,
 			C.CosmeticVariants[CurrentAttachmentMeshIndex],
 			CurrentAttachmentSkinIndex,
 			KFP);
-	}
+		}
 
 	// Treat `CLEARED_ATTACHMENT_INDEX as special value (for client detachment)
 	if( CurrentAttachmentMeshIndex == `CLEARED_ATTACHMENT_INDEX )

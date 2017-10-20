@@ -308,7 +308,7 @@ defaultproperties
 		XPosition=0.25
 		YPosition=0.025
 		XSize=0.074
-		YSize=0.07
+		YSize=0.045
 		OnClickLeft=ButtonClicked
 		OnClickRight=ButtonClicked
 		ExtravDir=1
@@ -320,7 +320,8 @@ defaultproperties
 		XPosition=0.325
 		YPosition=0.025
 		XSize=0.074
-		YSize=0.07
+		YSize=0.045
+		ExtravDir=1
 		OnClickLeft=ButtonClicked
 		OnClickRight=ButtonClicked
 	End Object
@@ -331,7 +332,7 @@ defaultproperties
 		XPosition=0.4
 		YPosition=0.025
 		XSize=0.074
-		YSize=0.07
+		YSize=0.045
 		OnClickLeft=ButtonClicked
 		OnClickRight=ButtonClicked
 		bDisabled=true

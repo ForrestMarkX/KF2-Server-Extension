@@ -31,6 +31,7 @@ var bool bIsMuted,bInitialPT,bIsDev,bHiddenUser,bClientUseCustom,bClientFirstCha
 var int RespawnCounter;
 var byte AdminType;
 var class<Ext_PerkBase> ECurrentPerk;
+var Ext_PerkBase FCurrentPerk;
 var int ECurrentPerkLevel,ECurrentPerkPrestige;
 var ExtPerkManager PerkManager;
 /* AdminTypes:
@@ -47,6 +48,10 @@ var repnotify byte RepLevelProgress;
 var transient color HUDPerkColor;
 var byte FixedData;
 var int RepPlayTime,RepKills,RepEXP;
+
+// Perk related
+var bool bNukeIsOn,bConcussiveIsOn,bForScienceOn,bHasSciEMP;
+var float NukeTimeMult;
 
 // Custom character stuff.
 var array<FCustomCharEntry> CustomCharList;
@@ -73,6 +78,8 @@ replication
 		RespawnCounter,AdminType,ECurrentPerk,ECurrentPerkLevel,ECurrentPerkPrestige,RepKills,RepEXP,RepLevelProgress,bIsDev,NameTag,FixedData,bHiddenUser,CustomCharacter,HasSupplier;
 	if (bNetInitial || bInitialPT)
 		RepPlayTime;
+	if ( true )
+		bNukeIsOn, bConcussiveIsOn, NukeTimeMult;
 }
 
 simulated function PostBeginPlay()

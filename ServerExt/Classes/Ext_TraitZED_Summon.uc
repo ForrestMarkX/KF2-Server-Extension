@@ -176,7 +176,7 @@ defaultproperties
 	DefZedTypes.Add((Zeds=(Class'KFPawn_ZedBloat',Class'KFPawn_ZedStalker',Class'KFPawn_ZedGorefast')))
 	DefZedTypes.Add((Zeds=(Class'KFPawn_ZedHusk',Class'KFPawn_ZedSirenX',Class'KFPawn_ZedScrake')))
 	DefZedTypes.Add((Zeds=(Class'KFPawn_ZedSirenX',Class'KFPawn_ZedFleshpound',Class'KFPawn_ZedScrake')))
-	DefZedTypes.Add((Zeds=(Class'KFPawn_ZedHansFriendlyTest')))
+	DefZedTypes.Add((Zeds=(Class'ExtPawn_ZedHans_Pet')))
 	
 	WebConfigs.Add((PropType=2,PropName="ZedTypes",UIName="Zed Types",UIDesc="Type of zeds each level can spawn (separate types with a comma)",NumElements=-1))
 	WebConfigs.Add((PropType=0,PropName="ZedRespawnTime",UIName="Zed RespawnTime",UIDesc="Time in seconds it takes for zeds to respawn"))

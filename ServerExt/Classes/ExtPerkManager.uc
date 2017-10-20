@@ -77,19 +77,70 @@ function bool ApplyPerkName( string S )
 }
 function ApplyPerk( Ext_PerkBase P )
 {
+	local KFPawn_Human HP;
+	local KFInventoryManager InvMan;
+	local Ext_T_ZEDHelper H;
+	local int i;
+	
 	if( P==None )
 		return;
-	if( CurrentPerk!=None )
+		
+	if( PlayerOwner.Pawn != None )
+	{
+		InvMan = KFInventoryManager(PlayerOwner.Pawn.InvManager);
+		if( InvMan != None )
+			InvMan.MaxCarryBlocks = InvMan.Default.MaxCarryBlocks;
+			
+		foreach PlayerOwner.Pawn.ChildActors(class'Ext_T_ZEDHelper',H)
+		{
+			H.Destroy();
+		}
+		
+		HP = KFPawn_Human(PlayerOwner.Pawn);
+		if( HP != None )
+			HP.DefaultInventory = HP.Default.DefaultInventory;
+	}
+	
+	if( CurrentPerk != None )
+	{
 		CurrentPerk.DeactivateTraits();
+		
+		for( i=0; i<CurrentPerk.PerkTraits.Length; ++i )
+		{
+			CurrentPerk.PerkTraits[i].TraitType.Static.CancelEffectOn(KFPawn_Human(PlayerOwner.Pawn),CurrentPerk,CurrentPerk.PerkTraits[i].CurrentLevel,CurrentPerk.PerkTraits[i].Data);
+		}
+	}
+		
 	bStatsDirty = true;
 	CurrentPerk = P;
+	
 	if( PRIOwner!=None )
 	{
 		PRIOwner.ECurrentPerk = P.Class;
+		PRIOwner.FCurrentPerk = P;
 		P.UpdatePRILevel();
 	}
+	
 	if( CurrentPerk!=None )
+	{
 		CurrentPerk.ActivateTraits();
+		
+		if( PlayerOwner.Pawn != None )
+		{
+			HP = KFPawn_Human(PlayerOwner.Pawn);
+			if( HP != None )
+			{
+				HP.HealthMax = HP.default.Health;
+				HP.MaxArmor = HP.default.MaxArmor;
+			
+				ModifyHealth(HP.HealthMax);
+				ModifyArmor(HP.MaxArmor);
+				
+				if( HP.Health > HP.HealthMax ) HP.Health = HP.HealthMax;
+				if( HP.Armor > HP.MaxArmor ) HP.Armor = HP.MaxArmor;
+			}
+		}
+	}
 }
 simulated final function Ext_PerkBase FindPerk( class<Ext_PerkBase> P )
 {
@@ -620,6 +671,20 @@ function GameExplosion GetExplosionTemplate()
 	return class'KFPerk_Firebug'.Default.ExplosionTemplate;
 }
 
+// Additional functions
+function OnWaveEnded()
+{
+	CurrentPerk.OnWaveEnded();
+}
+function NotifyZedTimeStarted()
+{
+	CurrentPerk.NotifyZedTimeStarted();
+}
+simulated function float GetZedTimeExtensions( byte Level )
+{
+	return CurrentPerk.GetZedTimeExtensions(Level);
+}
+
 // SWAT:
 simulated function bool HasHeavyArmor()
 {
@@ -636,6 +701,76 @@ simulated function float GetCrouchSpeedModifier( KFWeapon KFW )
 simulated function bool ShouldKnockDownOnBump()
 {
 	return (CurrentPerk!=None && CurrentPerk.bHasSWATEnforcer);
+}
+
+// DEMO:
+simulated function bool ShouldRandSirenResist()
+{
+	return (Ext_PerkDemolition(CurrentPerk)!=None ? Ext_PerkDemolition(CurrentPerk).bSirenResistance : false);
+}
+simulated function bool IsAoEActive()
+{
+	return (Ext_PerkDemolition(CurrentPerk)!=None ? Ext_PerkDemolition(CurrentPerk).AOEMult > 1.0f : false);
+}
+simulated function bool ShouldSacrifice()
+{
+	return (Ext_PerkDemolition(CurrentPerk)!=None ? (Ext_PerkDemolition(CurrentPerk).bCanUseSacrifice && !Ext_PerkDemolition(CurrentPerk).bUsedSacrifice) : false);
+}
+simulated function bool ShouldNeverDud()
+{
+	return (Ext_PerkDemolition(CurrentPerk)!=None ? Ext_PerkDemolition(CurrentPerk).bProfessionalActive : false);
+}
+function NotifyPerkSacrificeExploded()
+{
+	if( Ext_PerkDemolition(CurrentPerk) != none ) Ext_PerkDemolition(CurrentPerk).bUsedSacrifice = true;
+}
+simulated function float GetAoERadiusModifier()
+{
+	return (Ext_PerkDemolition(CurrentPerk)!=None ? Ext_PerkDemolition(CurrentPerk).GetAoERadiusModifier() : 1.0);
+}
+
+// MEDIC:
+simulated function bool GetHealingSpeedBoostActive()
+{
+	return (Ext_PerkFieldMedic(CurrentPerk)!=None ? Ext_PerkFieldMedic(CurrentPerk).GetHealingSpeedBoostActive() : false);
+}
+simulated function bool GetHealingDamageBoostActive()
+{
+	return (Ext_PerkFieldMedic(CurrentPerk)!=None ? Ext_PerkFieldMedic(CurrentPerk).GetHealingDamageBoostActive() : false);
+}
+simulated function bool GetHealingShieldActive()
+{
+	return (Ext_PerkFieldMedic(CurrentPerk)!=None ? Ext_PerkFieldMedic(CurrentPerk).GetHealingShieldActive() : false);
+}
+simulated function float GetSelfHealingSurgePct()
+{ 
+	return (Ext_PerkFieldMedic(CurrentPerk)!=None ? Ext_PerkFieldMedic(CurrentPerk).GetSelfHealingSurgePct() : 0.f);
+}
+function bool IsToxicDmgActive()
+{
+	return (Ext_PerkFieldMedic(CurrentPerk)!=None ? Ext_PerkFieldMedic(CurrentPerk).bUseToxicDamage : false);
+}
+static function class<KFDamageType> GetToxicDmgTypeClass()
+{
+	return class'Ext_PerkFieldMedic'.static.GetToxicDmgTypeClass();
+}
+static function ModifyToxicDmg( out int ToxicDamage )
+{
+	ToxicDamage = class'Ext_PerkFieldMedic'.static.ModifyToxicDmg(ToxicDamage);
+}
+simulated function float GetSnarePower( optional class<DamageType> DamageType, optional byte HitZoneIdx )
+{
+	return (Ext_PerkFieldMedic(CurrentPerk)!=None ? Ext_PerkFieldMedic(CurrentPerk).GetSnarePower(DamageType, HitZoneIdx) : 0.f);
+}
+
+// SUPPORT:
+function bool CanRepairDoors()
+{
+	return (Ext_PerkSupport(CurrentPerk)!=None ? Ext_PerkSupport(CurrentPerk).CanRepairDoors() : false);
+}
+simulated function float GetPenetrationModifier( byte Level, class<KFDamageType> DamageType, optional bool bForce  )
+{
+	return (Ext_PerkSupport(CurrentPerk)!=None ? Ext_PerkSupport(CurrentPerk).GetPenetrationModifier(Level, DamageType, bForce) : 0.f);
 }
 
 defaultproperties

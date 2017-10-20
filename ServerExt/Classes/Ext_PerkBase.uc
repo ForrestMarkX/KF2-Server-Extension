@@ -1346,6 +1346,14 @@ simulated function float GetIronSightSpeedModifier( KFWeapon KFW )
 	return 1.f;
 }
 
+function OnWaveEnded();
+function NotifyZedTimeStarted();
+
+simulated function float GetZedTimeExtensions( byte Level )
+{
+	return 1.f;
+}
+
 defaultproperties
 {
 	CurrentConfigVer=13

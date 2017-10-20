@@ -18,6 +18,7 @@ static function CancelEffectOn( KFPawn_Human Player, Ext_PerkBase Perk, byte Lev
 defaultproperties
 {
 	SupportedPerk=class'Ext_PerkBerserker'
+	TraitGroup=class'Ext_TGroupZEDTime'
 	TraitName="ZED TIME - Spartan!"
 	NumLevels=3
 	DefLevelCosts(0)=50

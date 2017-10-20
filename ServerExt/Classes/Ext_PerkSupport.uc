@@ -1,12 +1,45 @@
 Class Ext_PerkSupport extends Ext_PerkBase;
 
+var bool bUseAPShot,bUsePerforate,bCanRepairDoors;
+var float APShotMul;
+
+simulated function bool GetUsingTactialReload( KFWeapon KFW )
+{
+	return (IsWeaponOnPerk(KFW) ? Modifiers[5]<0.75 : false);
+}
+
+function bool CanRepairDoors()
+{
+	return bCanRepairDoors;
+}
+
+simulated function float GetPenetrationModifier( byte Level, class<KFDamageType> DamageType, optional bool bForce  )
+{
+    local float PenetrationPower;
+    if( !bForce && (DamageType == none || ( DamageType!=None && DamageType.Default.ModifierPerkList.Find(BasePerk) == INDEX_NONE )))
+        return 0;
+
+    PenetrationPower = bUseAPShot ? APShotMul : 0.f;
+    PenetrationPower = IsPerforateActive() ? 40.f : PenetrationPower;
+
+    return PenetrationPower;
+}
+
+simulated function bool IsPerforateActive()
+{
+	return bUsePerforate && WorldInfo.TimeDilation < 1.f;
+}
+
 defaultproperties
 {
 	PerkName="Support"
 	PerkIcon=Texture2D'UI_PerkIcons_TEX.UI_PerkIcon_Support'
+	DefTraitList.Add(class'Ext_TraitGrenadeSUpg')
 	DefTraitList.Add(class'Ext_TraitWPSupp')
 	DefTraitList.Add(class'Ext_TraitSupply')
-	DefTraitList(0)=class'Ext_TraitGrenadeSUpg'
+	DefTraitList.Add(class'Ext_TraitAPShots')
+	DefTraitList.Add(class'Ext_TraitDoorRepair')
+	DefTraitList.Add(class'Ext_TraitPenetrator')
 	BasePerk=class'KFPerk_Support'
 	WeldExpUpNum=80
 

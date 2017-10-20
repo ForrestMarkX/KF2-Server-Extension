@@ -9,6 +9,11 @@ replication
 		bHasUberAmmo,bHasFanfire;
 }
 
+simulated function bool GetUsingTactialReload( KFWeapon KFW )
+{
+	return (IsWeaponOnPerk(KFW) ? Modifiers[5]<0.8 : false);
+}
+
 simulated function bool GetIsUberAmmoActive( KFWeapon KFW )
 {
 	return bHasUberAmmo && IsWeaponOnPerk(KFW) && WorldInfo.TimeDilation < 1.f;
@@ -16,8 +21,15 @@ simulated function bool GetIsUberAmmoActive( KFWeapon KFW )
 
 simulated function float GetZedTimeModifier( KFWeapon W )
 {
-	if( bHasFanfire && WorldInfo.TimeDilation<1.f && IsWeaponOnPerk(W) && BasePerk.Default.ZedTimeModifyingStates.Find(W.GetStateName()) != INDEX_NONE )
-		return 0.9f;
+	local name StateName;
+	
+	if( bHasFanfire && IsWeaponOnPerk( W ) )
+	{
+		StateName = W.GetStateName();
+		if( BasePerk.Default.ZedTimeModifyingStates.Find( StateName ) != INDEX_NONE || StateName == 'Reloading' )
+			return 1.f;
+	}
+
 	return 0.f;
 }
 

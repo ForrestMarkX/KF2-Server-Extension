@@ -49,6 +49,58 @@ function bool Died(Controller Killer, class<DamageType> DamageType, vector HitLo
 	return true;
 }
 
+simulated function PlayEmoteAnimation(optional bool bNewCharacter)
+{
+	local name AnimName;
+	local float BlendInTime;
+
+	AnimName = class'ExtEmoteList'.static.GetUnlockedEmote( class'ExtEmoteList'.static.GetEquippedEmoteId(ExtPlayerController(Controller)), ExtPlayerController(Controller) );	
+
+	BlendInTime = (bNewCharacter) ? 0.f : 0.4;
+
+	// Briefly turn off notify so that PlayCustomAnim won't call OnAnimEnd (e.g. character swap)
+	BodyStanceNodes[EAS_FullBody].SetActorAnimEndNotification( FALSE );
+
+	BodyStanceNodes[EAS_FullBody].PlayCustomAnim(AnimName, 1.f, BlendInTime, 0.4, false, true);
+	BodyStanceNodes[EAS_FullBody].SetActorAnimEndNotification( TRUE );
+}
+
+function AttachWeaponByItemDefinition( int ItemDefinition )
+{
+	local class<KFWeaponDefinition> WeaponDef;
+	local int ItemINdex;
+	local KFWeaponAttachment WeaponPreview;
+
+	//find weapon def
+	ItemIndex = class'ExtWeaponSkinList'.default.Skins.Find('Id', ItemDefinition);
+
+	if(ItemIndex ==  INDEX_NONE)
+	{
+		`log("Could not find item" @ItemDefinition);
+		return;
+	}
+
+	WeaponDef = class'ExtWeaponSkinList'.default.Skins[ItemIndex].WeaponDef;
+
+	if(WeaponDef == none)
+	{
+		`log("Weapon def NONE for : " @ItemDefinition);
+		return;
+	}
+
+	//load in and add object .  
+	WeaponPreview = KFWeaponAttachment ( DynamicLoadObject( WeaponDef.default.AttachmentArchtypePath, class'KFWeaponAttachment' ) );
+
+	//attatch it to player
+	WeaponAttachmentTemplate = WeaponPreview;
+
+	WeaponAttachmentChanged();		
+
+	//setweapon skin
+	WeaponAttachment.SetWeaponSkin(ItemDefinition);
+	
+}
+
 defaultproperties
 {
 	bCollideActors=false

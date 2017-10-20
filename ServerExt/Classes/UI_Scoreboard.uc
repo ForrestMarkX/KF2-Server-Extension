@@ -250,7 +250,7 @@ final function Texture2D FindAvatar( UniqueNetId ClientID )
 	S = KFPlayerController(GetPlayer()).GetSteamAvatar(ClientID);
 	if( S=="" )
 		return None;
-	return Texture2D(FindObject(Mid(S,6),class'Texture2D'));
+	return Texture2D(FindObject(S,class'Texture2D'));
 }
 
 final function DrawCenteredText( string S, float X, float Y, optional float Scale=1.f )

@@ -36,7 +36,15 @@ var transient float EndGameCamTimer,LastPlayerCalcView;
 var transient bool bEndGameCamFocus;
 
 var globalconfig bool bShowFPLegs,bHideNameBeacons,bHideKillMsg,bHideDamageMsg,bHideNumberMsg,bNoMonsterPlayer,bNoScreenShake,bRenderModes,bUseKF2DeathMessages,bUseKF2KillMessages;
-var bool bMOTDReceived,bNamePlateShown,bNamePlateHidden,bClientHideKillMsg,bClientHideDamageMsg,bClientHideNumbers,bNoDamageTracking,bClientNoZed;
+var globalconfig int SelectedEmoteIndex;
+var bool bMOTDReceived,bNamePlateShown,bNamePlateHidden,bClientHideKillMsg,bClientHideDamageMsg,bClientHideNumbers,bNoDamageTracking,bClientNoZed,bSetPerk;
+
+struct SavedSkins
+{
+	var int ID;
+	var class<KFWeaponDefinition> WepDef;
+};
+var globalconfig array<SavedSkins> SavedWeaponSkins;
 
 replication
 {
