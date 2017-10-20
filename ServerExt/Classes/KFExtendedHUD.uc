@@ -26,7 +26,7 @@ var transient array<FKillMessageType> KillMessages;
 var int HealthBarFullVisDist, HealthBarCutoffDist;
 var transient float BestPetXL, BestPetYL;
 
-struct DamageInfo
+struct PopupDamageInfo
 {
     var int Damage;
     var float HitTime;
@@ -36,7 +36,7 @@ struct DamageInfo
     var color FontColor;
 };
 const DAMAGEPOPUP_COUNT = 32;
-var DamageInfo DamagePopups[32];
+var PopupDamageInfo DamagePopups[32];
 var int NextDamagePopupIndex;
 var float DamagePopupFadeOutTime;
 
