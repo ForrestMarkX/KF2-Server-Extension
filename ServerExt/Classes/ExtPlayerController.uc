@@ -597,7 +597,7 @@ simulated function CancelConnection()
 
 function NotifyLevelUp(class<KFPerk> PerkClass, byte PerkLevel);
 
-function ShowBossNameplate( KFPawn_Monster KFBoss, optional string PlayerName)
+function ShowBossNameplate( KFInterface_MonsterBoss KFBoss, optional string PlayerName)
 {
 	if( !bNamePlateShown ) // Dont make multiple bosses pop this up multiple times.
 	{

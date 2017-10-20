@@ -816,7 +816,7 @@ ignores FaceRotation, SetMovementPhysics;
 	{
 		return (bForceCheck ? Global.CanDoSpecialMove(AMove,bForceCheck) : false);
 	}
-	function bool CanBeGrabbed(KFPawn GrabbingPawn, optional bool bIgnoreFalling)
+	function bool CanBeGrabbed(KFPawn GrabbingPawn, optional bool bIgnoreFalling, optional bool bAllowSameTeamGrab)
 	{
 		return false;
 	}

@@ -1,6 +1,6 @@
 class KFPawn_ZedSirenX extends KFPawn_ZedSiren;
 
-function bool CanBeGrabbed(KFPawn GrabbingPawn, optional bool bIgnoreFalling)
+function bool CanBeGrabbed(KFPawn GrabbingPawn, optional bool bIgnoreFalling, optional bool bAllowSameTeamGrab)
 {
     return false;
 }

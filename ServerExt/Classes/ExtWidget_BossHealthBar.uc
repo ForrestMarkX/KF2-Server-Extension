@@ -52,13 +52,13 @@ final function bool HasBossesAlive()
 	return (BossList.Length>0);
 }
 
-function SetBossPawn(KFPawn_Monster NewBossPawn)
+function SetBossPawn(KFInterface_MonsterBoss NewBoss)
 {
-	if( !KFPC.bHideBossHealthBar && NewBossPawn!=None && NewBossPawn.IsAliveAndWell() )
+	if( !KFPC.bHideBossHealthBar && NewBoss!=None && NewBoss.GetMonsterPawn().IsAliveAndWell() )
 	{
 		bHasInit = true;
 		++NumBosses;
-		BossList.AddItem(NewBossPawn);
+		BossList.AddItem(NewBoss.GetMonsterPawn());
 	}
 }
 
@@ -73,7 +73,7 @@ final function UpdateBossInfo()
 		CheckBestBoss();
 	}
 
-	V = (BossPawn!=None ? FClamp(float(BossPawn.Health) / float(BossPawn.HealthMax),0.f,1.f) : 0.f);
+	V = (BossPawn!=None ? FClamp(float(BossPawn.GetMonsterPawn().Health) / float(BossPawn.GetMonsterPawn().HealthMax),0.f,1.f) : 0.f);
 	if( LastHP!=V )
 	{
 		LastHP = V;
@@ -114,7 +114,7 @@ final function CheckBestBoss()
 	if( Best!=BossPawn )
 	{
 		BossPawn = Best;
-		SetBossName(Best.BossName);
+		SetBossName(Best.static.GetLocalizedName());
 	}
 }
 

@@ -429,7 +429,7 @@ function bool DoJump( bool bUpdating )
 }
 
 // Nope.
-function bool CanBeGrabbed(KFPawn GrabbingPawn, optional bool bIgnoreFalling)
+function bool CanBeGrabbed(KFPawn GrabbingPawn, optional bool bIgnoreFalling, optional bool bAllowSameTeamGrab)
 {
     return false;
 }
