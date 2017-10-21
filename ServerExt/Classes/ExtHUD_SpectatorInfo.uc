@@ -15,45 +15,31 @@ function LocalizeText()
     SetObject("localizedText", TempObject);
 }
 
-function UpdateSpectateeInfo(optional bool bForceUpdate)
-{
-	local ExtPlayerReplicationInfo E;
-
-	E = ExtPlayerReplicationInfo(SpectatedKFPRI);
-    if( !GetPC().IsSpectating() || E==None )
-    {
-		if( !bUnsetInfo )
-		{
-			SetVisible(false);
-			bUnsetInfo = true;
-		}
-        return;
-    }
-
-    // Update the perk class.
-    if( ExtLastPerkClass!=E.ECurrentPerk || LastPerkLevel!=E.ECurrentPerkLevel || bForceUpdate || bUnsetInfo )
-	{
-        LastPerkLevel = E.ECurrentPerkLevel;
-        ExtLastPerkClass = E.ECurrentPerk;
-        UpdatePlayerInfo(bForceUpdate);
-		bUnsetInfo = false;
-	}
-}
-
-function UpdatePlayerInfo(optional bool bForceUpdate)
+function UpdatePlayerInfo( optional bool bForceUpdate )
 {
 	local GFxObject TempObject;
+	local ExtPlayerReplicationInfo E;
+	
+	if( SpectatedKFPRI == None )
+		return;
+	
+	E = ExtPlayerReplicationInfo(SpectatedKFPRI);
 
-	TempObject = CreateObject("Object");
-	TempObject.SetString("playerName", SpectatedKFPRI.GetHumanReadableName());
-	if( ExtLastPerkClass!=None )
+	if( LastPerkLevel != E.ECurrentPerkLevel || LastPerkLevel != E.ECurrentPerkLevel || bForceUpdate )
 	{
-		TempObject.SetString("playerPerk", SpectatedKFPRI.CurrentPerkClass.default.LevelString @LastPerkLevel @ExtLastPerkClass.default.PerkName );
-		TempObject.SetString("iconPath", ExtLastPerkClass.Static.GetPerkIconPath(LastPerkLevel));
+		LastPerkLevel = E.ECurrentPerkLevel;
+		ExtLastPerkClass = E.ECurrentPerk;
+		TempObject = CreateObject( "Object" );
+		TempObject.SetString( "playerName", SpectatedKFPRI.GetHumanReadableName() );
+		if( ExtLastPerkClass!=None && TempObject !=None )
+		{
+			TempObject.SetString( "playerPerk", SpectatedKFPRI.CurrentPerkClass.default.LevelString @LastPerkLevel @ExtLastPerkClass.default.PerkName );
+			TempObject.SetString( "iconPath", ExtLastPerkClass.Static.GetPerkIconPath(LastPerkLevel) );
+			SetObject( "playerData", TempObject );
+		}
+		else TempObject.SetString( "playerPerk","No perk" );
+		SetVisible( true );
 	}
-	else TempObject.SetString("playerPerk","No perk");
-	SetObject("playerData", TempObject);
-	SetVisible(true);
 }
 
 defaultproperties
