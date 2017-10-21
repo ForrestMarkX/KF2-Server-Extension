@@ -490,6 +490,12 @@ function NetDamage(int OriginalDamage, out int Damage, Pawn Injured, Controller 
 		ClearTimer('CheckDamageDone');
 		CheckDamageDone();
 	}
+	if ( KFPawn_Monster(Injured) != None && InstigatedBy != none && InstigatedBy.GetTeamNum() == Injured.GetTeamNum() )
+	{
+		Momentum = vect(0,0,0);
+		Damage = 0;
+		return;
+	}
 	if( Damage>0 && InstigatedBy!=None )
 	{
 		if( KFPawn_Monster(Injured)!=None )
