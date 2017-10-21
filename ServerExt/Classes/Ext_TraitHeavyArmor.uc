@@ -9,6 +9,14 @@ static function TraitDeActivate( Ext_PerkBase Perk, byte Level, optional Ext_Tra
 	Perk.bHeavyArmor = false;
 }
 
+static function ApplyEffectOn( KFPawn_Human Player, Ext_PerkBase Perk, byte Level, optional Ext_TraitDataStore Data )
+{
+	if( Level <= 1 )
+		return;
+		
+	Level == 2 ? Player.AddArmor(50) : Player.AddArmor(Player.MaxArmor);
+}
+
 defaultproperties
 {
 	TraitName="Heavy Armor"
