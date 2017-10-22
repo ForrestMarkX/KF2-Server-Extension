@@ -764,7 +764,7 @@ simulated function float GetSnarePower( optional class<DamageType> DamageType, o
 }
 
 // SUPPORT:
-function bool CanRepairDoors()
+simulated function bool CanRepairDoors()
 {
 	return (Ext_PerkSupport(CurrentPerk)!=None ? Ext_PerkSupport(CurrentPerk).CanRepairDoors() : false);
 }

@@ -15,7 +15,7 @@ simulated function bool GetUsingTactialReload( KFWeapon KFW )
 	return (IsWeaponOnPerk(KFW) ? Modifiers[5]<0.75 : false);
 }
 
-function bool CanRepairDoors()
+simulated function bool CanRepairDoors()
 {
 	return bCanRepairDoors;
 }
