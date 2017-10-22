@@ -73,7 +73,7 @@ final function bool HasLiveZeds()
 {
 	local KFPawn_Monster M;
 	
-	if( KFGameReplicationInfo(WorldInfo.GRI).WaveNum>KFGameReplicationInfo(WorldInfo.GRI).WaveMax ) // No pets on possible bonus waves.
+	if( KFGameReplicationInfo(WorldInfo.GRI).WaveNum>=KFGameReplicationInfo(WorldInfo.GRI).WaveMax ) // No pets on possible bonus waves.
 		return false;
 
 	foreach WorldInfo.AllPawns(Class'KFPawn_Monster',M)
