@@ -97,6 +97,9 @@ replication
 
 simulated final function bool IsWeaponOnPerk( KFWeapon W )
 {
+	if( class<KFPerk_Survivalist>(BasePerk) != None )
+		return true;
+		
 	return W!=None && W.GetWeaponPerkClass(BasePerk)==BasePerk;
 }
 
