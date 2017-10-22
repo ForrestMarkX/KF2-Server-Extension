@@ -3,6 +3,13 @@ Class Ext_PerkSupport extends Ext_PerkBase;
 var bool bUseAPShot,bUsePerforate,bCanRepairDoors;
 var float APShotMul;
 
+replication
+{
+	// Things the server should send to the client.
+	if ( true )
+		bCanRepairDoors, bUseAPShot, bUsePerforate, APShotMul;
+}
+
 simulated function bool GetUsingTactialReload( KFWeapon KFW )
 {
 	return (IsWeaponOnPerk(KFW) ? Modifiers[5]<0.75 : false);
