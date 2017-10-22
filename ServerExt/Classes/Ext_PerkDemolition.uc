@@ -53,10 +53,10 @@ simulated function ModifyDamageGiven( out int InDamage, optional Actor DamageCau
 	if( BasePerk==None || (DamageType!=None && DamageType.Default.ModifierPerkList.Find(BasePerk)>=0) || (KFWeapon(DamageCauser)!=None && IsWeaponOnPerk(KFWeapon(DamageCauser))) )
 	{
 		if( bDirectHit && class<KFDT_Ballistic_Shell>(DamageType) != none )
-			InDamage *= 0.25;
+			InDamage *= 1.25;
 
 		if( bCriticalHit && MyKFPM != none && IsCriticalHitZone( MyKFPM, HitZoneIdx ) )
-			InDamage *= 0.5f;
+			InDamage *= 1.5f;
 	}
 	
 	if( class<KFDT_DemoNuke_Toxic_Lingering>(DamageType) != None )
