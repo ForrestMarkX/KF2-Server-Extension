@@ -8,10 +8,10 @@ replication
 {
 	// Things the server should send to the client.
 	if ( true )
-		NukeDamageMult,bDirectHit,bCriticalHit,bProfessionalActive;
+		NukeDamageMult,bDirectHit,bCriticalHit,bProfessionalActive,AOEMult;
 }
 
-function float GetAoERadiusModifier()
+simulated function float GetAoERadiusModifier()
 {
 	return AOEMult;
 }
