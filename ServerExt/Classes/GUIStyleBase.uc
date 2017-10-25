@@ -36,10 +36,10 @@ function PickDefaultFontSize( float YRes )
 		++DefaultFontSize;
 	if( YRes>1000 )
 		++DefaultFontSize;
-	if( YRes>1200 )
-		++DefaultFontSize;
-	if( YRes>1300 )
-		++DefaultFontSize;
+	//if( YRes>1200 )
+		//++DefaultFontSize;
+	//if( YRes>1300 )
+		//++DefaultFontSize;
 
 	S = "ABC";
 	PickFont(DefaultFontSize,YRes).GetStringHeightAndWidth(S,YL,XL);

@@ -325,8 +325,8 @@ exec function SetShowScores(bool bNewValue)
 	if( GUIController!=None )
 	{
 		if( bShowScores )
-			GUIController.OpenMenu(class'UI_Scoreboard');
-		else GUIController.CloseMenu(class'UI_Scoreboard');
+			GUIController.OpenMenu(class'UI_Scoreboard_CD');
+		else GUIController.CloseMenu(class'UI_Scoreboard_CD');
 	}
 }
 final function RenderKillMsg()
