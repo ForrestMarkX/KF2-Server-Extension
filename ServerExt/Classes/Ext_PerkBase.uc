@@ -1414,7 +1414,7 @@ defaultproperties
 	DefPerkStats(3)=(MaxValue=80,CostPerValue=1,StatType="Spread",UIName="Fire Spread (-&%)",Progress=0.75)
 	DefPerkStats(4)=(MaxValue=1000,CostPerValue=1,StatType="Rate",UIName="Perk Rate of Fire (+&%)",Progress=0.5)
 	DefPerkStats(5)=(MaxValue=1000,CostPerValue=1,StatType="Reload",UIName="Perk Reload Time (-&%)",Progress=0.5)
-	DefPerkStats(6)=(MaxValue=200,CostPerValue=1,StatType="Health",UIName="Health (+&HP)",Progress=1)
+	DefPerkStats(6)=(MaxValue=150,CostPerValue=1,StatType="Health",UIName="Health (+&HP)",Progress=1)
 	DefPerkStats(7)=(MaxValue=100,CostPerValue=1,StatType="KnockDown",UIName="Knockback (+&%)",Progress=1)
 	DefPerkStats(8)=(MaxValue=200,CostPerValue=1,StatType="Welder",UIName="Welding Rate (+&%)",bHiddenConfig=true,Progress=0.5)
 	DefPerkStats(9)=(MaxValue=400,CostPerValue=1,StatType="Heal",UIName="Heal Efficiency (+&%)",bHiddenConfig=true,Progress=0.5)
