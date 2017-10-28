@@ -37,27 +37,6 @@ simulated function Inventory CreateInventory(class<Inventory> NewInventoryItemCl
 			return Super.CreateInventory(class'ExtWeap_Pistol_Dual9mm', bDoNotActivate);
 		}
 		
-		Switch(Wep.Class.Name)
-		{
-			Case 'KFWeap_GrenadeLauncher_M79':
-				Wep.WeaponProjectiles[0] = class'ExtProj_HighExplosive_M79';
-				break;
-			Case 'KFWeap_RocketLauncher_RPG7':
-				Wep.WeaponProjectiles[0] = class'ExtProj_Rocket_RPG7';
-				break;
-			Case 'KFWeap_AssaultRifle_M16M203':
-				Wep.WeaponProjectiles[1] = class'ExtProj_HighExplosive_M16M203';
-				break;	
-			Case 'KFWeap_Thrown_C4':
-				Wep.WeaponProjectiles[0] = class'ExtProj_Thrown_C4';
-				break;	
-			Case 'KFWeap_RocketLauncher_Seeker6':
-				Wep.WeaponProjectiles[0] = class'ExtProj_Rocket_Seeker6';
-				break;	
-			default:
-				break;
-		}
-		
 		return Wep;
 	}
 	

@@ -21,26 +21,18 @@ simulated function bool GetUsingTactialReload( KFWeapon KFW )
 	return (IsWeaponOnPerk(KFW) ? Modifiers[5]<0.85 : false);
 }
 
-simulated function bool IsConcussiveForceActive()
-{
-	return Modifiers[7] > 1.5;
-}
-
 simulated function float ApplyEffect( name Type, float Value, float Progress )
 {
-	local ExtPlayerReplicationInfo MyPRI;
+	local KFPlayerReplicationInfo MyPRI;
+	local float DefValue;
 	
-	MyPRI = ExtPlayerReplicationInfo(PlayerOwner.PlayerReplicationInfo);
+	DefValue = Super.ApplyEffect(Type, Value, Progress);
+	MyPRI = KFPlayerReplicationInfo(PlayerOwner.PlayerReplicationInfo);
 	
-	switch( Type )
-	{
-	case 'KnockDown':
-		if( MyPRI != none )
-			MyPRI.bConcussiveIsOn = IsConcussiveForceActive();
-		break;
-	}
+	if( MyPRI != None && Type == 'KnockDown' )
+		MyPRI.bConcussiveActive = Modifiers[7] > 1.5;
 	
-	return Super.ApplyEffect(Type, Value, Progress);
+	return DefValue;
 }
 
 function OnWaveEnded()
@@ -100,11 +92,11 @@ defaultproperties
 
 	PrimaryMelee=class'KFWeap_Knife_Demolitionist'
 	PrimaryWeapon=class'KFWeap_GrenadeLauncher_HX25'
-	PerkGrenade=class'ExtProj_DynamiteGrenade'
+	PerkGrenade=class'KFProj_DynamiteGrenade'
 	
 	PrimaryWeaponDef=class'KFWeapDef_HX25'
 	KnifeWeaponDef=class'KFWeapDef_Knife_Demo'
-	GrenadeWeaponDef=class'ExtWeapDef_Grenade_Demo'
+	GrenadeWeaponDef=class'KFWeapDef_Grenade_Demo'
 	
 	AutoBuyLoadOutPath=(class'KFWeapDef_HX25', class'KFWeapDef_M79', class'KFWeapDef_M16M203', class'KFWeapDef_RPG7')
 	

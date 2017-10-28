@@ -49,10 +49,6 @@ var transient color HUDPerkColor;
 var byte FixedData;
 var int RepPlayTime,RepKills,RepEXP;
 
-// Perk related
-var bool bNukeIsOn,bConcussiveIsOn,bForScienceOn,bHasSciEMP;
-var float NukeTimeMult;
-
 // Custom character stuff.
 var array<FCustomCharEntry> CustomCharList;
 var repnotify FMyCustomChar CustomCharacter;
@@ -78,8 +74,6 @@ replication
 		RespawnCounter,AdminType,ECurrentPerk,ECurrentPerkLevel,ECurrentPerkPrestige,RepKills,RepEXP,RepLevelProgress,bIsDev,NameTag,FixedData,bHiddenUser,CustomCharacter,HasSupplier;
 	if (bNetInitial || bInitialPT)
 		RepPlayTime;
-	if ( true )
-		bNukeIsOn, bConcussiveIsOn, NukeTimeMult;
 }
 
 simulated function PostBeginPlay()

@@ -31,12 +31,10 @@ static function TraitActivate( Ext_PerkBase Perk, byte Level, optional Ext_Trait
 	local ExtPlayerReplicationInfo MyPRI;
 	
 	MyPRI = ExtPlayerReplicationInfo(Perk.PlayerOwner.PlayerReplicationInfo);
-	if( MyPRI == None )
+	if( MyPRI == None || Ext_PerkDemolition(Perk) == None )
 		return;
 	
-	MyPRI.bNukeIsOn = true;
-	MyPRI.NukeTimeMult = 1.0 + (((float(Level) - 1.f) * 2.f) / 100.f);
-	
+	MyPRI.bNukeActive = true;
 	Ext_PerkDemolition(Perk).NukeDamageMult = 1.0 + (((float(Level) - 1.f) * 5.f) / 100.f);
 }
 
@@ -45,12 +43,10 @@ static function TraitDeActivate( Ext_PerkBase Perk, byte Level, optional Ext_Tra
 	local ExtPlayerReplicationInfo MyPRI;
 	
 	MyPRI = ExtPlayerReplicationInfo(Perk.PlayerOwner.PlayerReplicationInfo);
-	if( MyPRI == None )
+	if( MyPRI == None || Ext_PerkDemolition(Perk) == None )
 		return;
 	
-	MyPRI.bNukeIsOn = false;
-	MyPRI.NukeTimeMult = 1.0;
-	
+	MyPRI.bNukeActive = false;
 	Ext_PerkDemolition(Perk).NukeDamageMult = 1.0;
 }
 
