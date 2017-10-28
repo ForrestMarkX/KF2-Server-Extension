@@ -3,9 +3,8 @@ class ExtProj_HighExplosive_M79 extends KFProj_HighExplosive_M79;
 simulated protected function PrepareExplosionTemplate()
 {
     local ExtPlayerReplicationInfo MyPRI;
-	local Ext_PerkDemolition DemoPerk;
 
-    Super(KFProjectile).PrepareExplosionTemplate();
+    Super.PrepareExplosionTemplate();
 
     if(Instigator == None)
     	return;
@@ -25,12 +24,6 @@ simulated protected function PrepareExplosionTemplate()
 			ExplosionTemplate.ExplosionEffects = AltExploEffects;
 			ExplosionTemplate.ExplosionSound = class'KFPerk_Demolitionist'.static.GetConcussiveExplosionSound();
 		}
-		
-		DemoPerk = Ext_PerkDemolition(MyPRI.FCurrentPerk);
-		if( DemoPerk == none )
-			return;
-		
-		ExplosionTemplate.DamageRadius *= DemoPerk.GetAoERadiusModifier();
     }
 }
 
