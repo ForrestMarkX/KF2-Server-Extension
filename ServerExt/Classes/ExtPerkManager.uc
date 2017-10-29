@@ -773,6 +773,21 @@ simulated function float GetPenetrationModifier( byte Level, class<KFDamageType>
 	return (Ext_PerkSupport(CurrentPerk)!=None ? Ext_PerkSupport(CurrentPerk).GetPenetrationModifier(Level, DamageType, bForce) : 0.f);
 }
 
+// Other
+function ApplySkillsToPawn()
+{
+	if( CheckOwnerPawn() )
+	{
+		OwnerPawn.UpdateGroundSpeed();
+		OwnerPawn.bMovesFastInZedTime = false;
+
+		if( MyPRI == none )
+			MyPRI = KFPlayerReplicationInfo(OwnerPawn.PlayerReplicationInfo);
+
+		ApplyWeightLimits();
+	}
+}
+
 defaultproperties
 {
 	bTickIsDisabled=false
