@@ -89,6 +89,9 @@ defaultproperties
 	DefTraitList.Add(class'Ext_TraitDemoNuke')
 	DefTraitList.Add(class'Ext_TraitDemoProfessional')
 	BasePerk=class'KFPerk_Demolitionist'
+	
+	AOEMult=1.0f
+	NukeDamageMult=1.0f
 
 	PrimaryMelee=class'KFWeap_Knife_Demolitionist'
 	PrimaryWeapon=class'KFWeap_GrenadeLauncher_HX25'
