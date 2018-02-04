@@ -13,7 +13,7 @@ replication
 
 simulated function float GetAoERadiusModifier()
 {
-	return AOEMult;
+	return AOEMult != 0 ? AOEMult : 1.0f;
 }
 
 simulated function bool GetUsingTactialReload( KFWeapon KFW )
@@ -52,7 +52,7 @@ simulated function ModifyDamageGiven( out int InDamage, optional Actor DamageCau
 	}
 	
 	if( class<KFDT_DemoNuke_Toxic_Lingering>(DamageType) != None )
-		InDamage *= NukeDamageMult;
+		InDamage *= NukeDamageMult != 0 ? NukeDamageMult : 1.0f;
 	
 	Super.ModifyDamageGiven(InDamage, DamageCauser, MyKFPM, DamageInstigator, DamageType, HitZoneIdx);
 }
@@ -102,7 +102,7 @@ defaultproperties
 	GrenadeWeaponDef=class'KFWeapDef_Grenade_Demo'
 	
 	AutoBuyLoadOutPath=(class'KFWeapDef_HX25', class'KFWeapDef_M79', class'KFWeapDef_M16M203', class'KFWeapDef_RPG7')
-	
+
 	DefPerkStats(10)=(bHiddenConfig=true) // No support for mag size on demo.
 	DefPerkStats(13)=(bHiddenConfig=false) // Self damage.
 }
