@@ -230,7 +230,7 @@ function int AddItemByPriority( out SItemInformation WeaponInfo )
    	return BestIndex;
 }
 
-function bool CanCarry( const out STraderItem Item )
+function bool CanCarry(const out STraderItem Item, optional int OverrideLevelValue = INDEX_NONE)
 {
 	local int Result;
 	

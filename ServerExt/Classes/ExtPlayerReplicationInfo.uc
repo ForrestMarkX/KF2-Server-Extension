@@ -8,15 +8,14 @@ struct FCustomCharEntry
 };
 struct FMyCustomChar // Now without constant.
 {
-	var int CharacterIndex,HeadMeshIndex,HeadSkinIndex,BodyMeshIndex,BodySkinIndex,AttachmentMeshIndices[`MAX_COSMETIC_ATTACHMENTS],AttachmentSkinIndices[`MAX_COSMETIC_ATTACHMENTS];
-	
-	structdefaultproperties
-	{
-		CharacterIndex=255
-		AttachmentMeshIndices[0]=255
-		AttachmentMeshIndices[1]=255
-		AttachmentMeshIndices[2]=255
-	}
+    var int CharacterIndex,HeadMeshIndex,HeadSkinIndex,BodyMeshIndex,BodySkinIndex,AttachmentMeshIndices[`MAX_COSMETIC_ATTACHMENTS],AttachmentSkinIndices[`MAX_COSMETIC_ATTACHMENTS];
+    
+    structdefaultproperties
+    {
+        AttachmentMeshIndices[0]=`CLEARED_ATTACHMENT_INDEX
+        AttachmentMeshIndices[1]=`CLEARED_ATTACHMENT_INDEX
+        AttachmentMeshIndices[2]=`CLEARED_ATTACHMENT_INDEX
+    }
 };
 
 // For custom trader inventory.
@@ -658,7 +657,7 @@ final function SaveCustomCharacter( ExtSaveDataBase Data )
 	c = 0;
 	for( i=0; i<`MAX_COSMETIC_ATTACHMENTS; ++i )
 	{
-		if( CustomCharacter.AttachmentMeshIndices[i]!=255 )
+		if( CustomCharacter.AttachmentMeshIndices[i]!=`CLEARED_ATTACHMENT_INDEX )
 			++c;
 	}
 
@@ -668,7 +667,7 @@ final function SaveCustomCharacter( ExtSaveDataBase Data )
 	// Write attachments.
 	for( i=0; i<`MAX_COSMETIC_ATTACHMENTS; ++i )
 	{
-		if( CustomCharacter.AttachmentMeshIndices[i]!=255 )
+		if( CustomCharacter.AttachmentMeshIndices[i]!=`CLEARED_ATTACHMENT_INDEX )
 		{
 			Data.SaveInt(i);
 			Data.SaveInt(CustomCharacter.AttachmentMeshIndices[i]);
@@ -746,6 +745,16 @@ static final function DummyLoadChar( ExtSaveDataBase Data )
 static final function DummySaveChar( ExtSaveDataBase Data )
 {
 	Data.SaveStr("");
+}
+
+simulated function Texture2D GetCurrentIconToDisplay()
+{
+	if(CurrentVoiceCommsRequest == VCT_NONE && ECurrentPerk != none)
+	{
+		return ECurrentPerk.default.PerkIcon;
+	}
+
+	return class'KFLocalMessage_VoiceComms'.default.VoiceCommsIcons[CurrentVoiceCommsRequest];
 }
 
 // Set admin levels without having to hard-reference to this mod.

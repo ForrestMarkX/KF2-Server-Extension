@@ -105,7 +105,7 @@ simulated final function bool IsWeaponOnPerk( KFWeapon W )
 
 simulated static function string GetPerkIconPath( int Level )
 {
-	return "img://"$PathName(Default.PerkIcon);
+	return "img://"$PathName(default.PerkIcon);
 }
 
 simulated function PostBeginPlay()

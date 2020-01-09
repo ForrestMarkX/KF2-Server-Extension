@@ -144,7 +144,7 @@ reliable client event ReceiveLocalizedMessage( class<LocalMessage> Message, opti
 		Super.ReceiveLocalizedMessage(Message,Switch,RelatedPRI_1,RelatedPRI_2,OptionalObject);
 }
 
-function AddZedKill( class<KFPawn_Monster> MonsterClass, byte Difficulty, class<DamageType> DT )
+function AddZedKill( class<KFPawn_Monster> MonsterClass, byte Difficulty, class<DamageType> DT, bool bKiller )
 {
 	// Stats.
 	if( ActivePerkManager!=None )
@@ -603,7 +603,7 @@ simulated function CancelConnection()
 	else class'Engine'.Static.GetEngine().GameViewport.ConsoleCommand("Disconnect");
 }
 
-function NotifyLevelUp(class<KFPerk> PerkClass, byte PerkLevel);
+function NotifyLevelUp(class<KFPerk> PerkClass, byte PerkLevel, byte NewPrestigeLevel);
 
 function ShowBossNameplate( KFInterface_MonsterBoss KFBoss, optional string PlayerName)
 {
@@ -1165,6 +1165,16 @@ state Dead
 			out_Location = HL;
 		else out_Location = EndOffset;
 	}
+}
+
+exec function RequestSwitchTeam()
+{
+    ConsoleCommand("disconnect");
+}
+
+exec function SwitchTeam()
+{
+    ConsoleCommand("disconnect");
 }
 
 defaultproperties

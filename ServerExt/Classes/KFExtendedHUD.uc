@@ -446,97 +446,131 @@ final function RenderProgress()
 
 function DrawHUD()
 {
-	local KFPawn KFPH;
-	local KFPawn_Human H;
+	local KFPawn_Human KFPH;
+	local KFPawn_Scripted KFPS;
+	local vector ViewLocation, ViewVector, PlayerPartyInfoLocation, PawnLocation;
+	local rotator ViewRotation;
+    local array<PlayerReplicationInfo> VisibleHumanPlayers;
+    local array<sHiddenHumanPawnInfo> HiddenHumanPlayers;
 	local float ThisDot,DotScale;
+	local vector TargetLocation;
+	local Actor LocActor;
 	local KFPawn_Monster M;
 	local vector V;
 	local bool bSpec;
-    local array<PlayerReplicationInfo> VisibleHumanPlayers;
-    local array<sHiddenHumanPawnInfo> HiddenHumanPlayers;
-	local vector ViewLocation,PawnLocation;
-	local rotator ViewRotation;
 
-	Super(HUD).DrawHUD();
-
-	// Draw the crosshair for casual mode
-	if( bDrawCrosshair || bForceDrawCrosshair || (KFPlayerOwner != none && KFPlayerOwner.GetTeamNum() == 255) )
-	{
-		if( KFPlayerOwner != none && !KFPlayerOwner.bCinematicMode )
-	        DrawCrosshair();
+    // Draw weapon HUD underneath everything else
+    if( KFPlayerOwner != none && KFPlayerOwner.Pawn != none && KFPlayerOwner.Pawn.Weapon != none )
+    {
+    	KFPlayerOwner.Pawn.Weapon.DrawHUD( self, Canvas );
     }
 
+	super.DrawHUD();
+
+    // Cache GRI
+    if( KFGRI == none )
+    {
+        KFGRI = KFGameReplicationInfo( WorldInfo.GRI );
+    }
+
+    // Don't draw canvas HUD in cinematic mode
+	if( KFPlayerOwner != none && KFPlayerOwner.bCinematicMode )
+	{
+		return;
+	}
+	LocActor = KFPlayerOwner.ViewTarget != none ? KFPlayerOwner.ViewTarget : KFPlayerOwner;
+
+	// Draw the crosshair for casual mode
+	if( KFPlayerOwner != none && (bDrawCrosshair || bForceDrawCrosshair || KFPlayerOwner.GetTeamNum() == 255) )
+	{
+        DrawCrosshair();
+    }
+
+    // Friendly player status
 	bSpec = (PlayerOwner.PlayerReplicationInfo!=None && PlayerOwner.PlayerReplicationInfo.bOnlySpectator);
 	if( bSpec || PlayerOwner.GetTeamNum()==0 )
 	{
 		//Friendly player status
 		if( !class'ExtPlayerController'.Default.bHideNameBeacons )
-		{
-			if( KFPlayerOwner != none )
-			{
-				KFPlayerOwner.GetPlayerViewPoint( ViewLocation, ViewRotation );
-			}
-		
-			Canvas.EnableStencilTest(true);
-			foreach WorldInfo.AllPawns(class'KFPawn', KFPH)
-			{
-				if( KFPH == None )
-					continue;
-					
-				H = KFPawn_Human(KFPH);
-				if( KFPH.PlayerReplicationInfo!=None && KFPH.PlayerReplicationInfo.Team!=None && KFPH.PlayerReplicationInfo.Team.TeamIndex==0 )
-				{
-					V = KFPH.Location + KFPH.MTO_PhysSmoothOffset + KFPH.CylinderComponent.CollisionHeight * vect(0,0,1);
-					ThisDot = Normal(V - PLCameraLoc) dot Normal(PLCameraDir);
+        {
+            if( KFPlayerOwner != none )
+            {
+                KFPlayerOwner.GetPlayerViewPoint( ViewLocation, ViewRotation );
+            }
+            ViewVector = vector(ViewRotation);
 
-					if( KFPH.IsAliveAndWell() && KFPH != PlayerOwner.Pawn)
-					{
-						if((WorldInfo.TimeSeconds - KFPH.Mesh.LastRenderTime) < 0.4f && (ThisDot > 0 && ThisDot < 1.0) )
-						{
-							if( H!=None )
-							{
-								DrawFriendlyHUD(H);
-								VisibleHumanPlayers.AddItem( H.PlayerReplicationInfo );
-							}
-							else DrawMonsterHUD(KFPH);
-						}
-						else if( H != None )
-						{
-							HiddenHumanPlayers.Insert( 0, 1 );
-							HiddenHumanPlayers[0].HumanPawn = H;
-							HiddenHumanPlayers[0].HumanPRI = H.PlayerReplicationInfo;
-						}
-					}
-				}
-			}
+            Canvas.EnableStencilTest(true);
+            foreach WorldInfo.AllPawns( class'KFPawn_Human', KFPH )
+            {
+                if( KFPH.IsAliveAndWell() && KFPH != KFPlayerOwner.Pawn && KFPH.Mesh.SkeletalMesh != none && KFPH.Mesh.bAnimTreeInitialised )
+                {
+                    PlayerPartyInfoLocation = KFPH.Mesh.GetPosition() + ( KFPH.CylinderComponent.CollisionHeight * vect(0,0,1) );
+                    if(`TimeSince(KFPH.Mesh.LastRenderTime) < 0.2f && Normal(PlayerPartyInfoLocation - ViewLocation) dot ViewVector > 0.f )
+                    {
+                        if( DrawFriendlyHumanPlayerInfo(KFPH) )
+                        {
+                            VisibleHumanPlayers.AddItem( KFPH.PlayerReplicationInfo );
+                        }
+                        else
+                        {
+                            HiddenHumanPlayers.Insert( 0, 1 );
+                            HiddenHumanPlayers[0].HumanPawn = KFPH;
+                            HiddenHumanPlayers[0].HumanPRI = KFPH.PlayerReplicationInfo;
+                        }
+                    }
+                    else
+                    {
+                        HiddenHumanPlayers.Insert( 0, 1 );
+                        HiddenHumanPlayers[0].HumanPawn = KFPH;
+                        HiddenHumanPlayers[0].HumanPRI = KFPH.PlayerReplicationInfo;
+                    }
+                }
+            }
 
-			// Draw hidden players
-			CheckAndDrawHiddenPlayerIcons( VisibleHumanPlayers, HiddenHumanPlayers );
+            foreach WorldInfo.AllPawns(class'KFPawn_Scripted', KFPS)
+            {
+                if (KFPS.ShouldShowOnHUD())
+                {
+                    PlayerPartyInfoLocation = KFPS.Mesh.GetPosition() + (KFPS.CylinderComponent.CollisionHeight * vect(0,0,1));
+                    DrawScriptedPawnInfo(KFPS, Normal(PlayerPartyInfoLocation - ViewLocation) dot ViewVector, `TimeSince(KFPS.Mesh.LastRenderTime) < 0.2f);
+                }
+            }
 
-			// Draw last remaining zeds
-			CheckAndDrawRemainingZedIcons();
-			
-			Canvas.EnableStencilTest(false);
-			
-			if( bSpec )
-			{
-				// Draw zed health bars.
-				foreach WorldInfo.AllPawns(class'KFPawn_Monster', M)
-				{
-					ThisDot = (PLCameraDir Dot (M.Location + M.CylinderComponent.CollisionHeight * vect(0,0,1))) - PLCameraDot;
-					if( ThisDot>0 && ThisDot<8000.f && M.IsAliveAndWell() && M.PlayerReplicationInfo!=None && M!=PlayerOwner.Pawn && (WorldInfo.TimeSeconds - M.Mesh.LastRenderTime) < 0.4f )
-						DrawFriendlyHUDZ(M);
-				}
-			}
-		}
+            if( !KFGRI.bHidePawnIcons )
+            {
+                // Draw hidden players
+                CheckAndDrawHiddenPlayerIcons( VisibleHumanPlayers, HiddenHumanPlayers );
+
+                // Draw last remaining zeds
+                CheckAndDrawRemainingZedIcons();
+
+                //Draw our current objective location
+                if(KFGRI.CurrentObjective != none && KFGRI.ObjectiveInterface != none)
+                {
+                    KFGRI.ObjectiveInterface.DrawHUD(self, Canvas);
+
+                    TargetLocation = KFGRI.ObjectiveInterface.GetIconLocation();
+                    ThisDot = Normal((TargetLocation + (class'KFPawn_Human'.default.CylinderComponent.CollisionHeight * vect(0, 0, 1))) - ViewLocation) dot ViewVector;
+
+                    if (ThisDot > 0 &&
+                        KFGRI.ObjectiveInterface.ShouldShowObjectiveHUD() &&
+                        (!KFGRI.ObjectiveInterFace.HasObjectiveDrawDistance() || VSizeSq(TargetLocation - LocActor.Location) < MaxDrawDistanceObjective))
+                    {
+                        DrawObjectiveHUD();
+                    }
+                }
+            }
+
+            Canvas.EnableStencilTest(false);
+        }
 	}
 	else if( KFPawn_Monster(PlayerOwner.Pawn)!=None )
 	{
 		// Draw human health auras.
 		DotScale = Canvas.ClipX*0.2f;
-		foreach WorldInfo.AllPawns(class'KFPawn_Human', H)
+		foreach WorldInfo.AllPawns(class'KFPawn_Human', KFPH)
 		{
-			PawnLocation = H.Location;
+			PawnLocation = KFPH.Location;
 			
 			if( IsZero( PawnLocation ) )
 			{
@@ -544,12 +578,12 @@ function DrawHUD()
 			}
 			
 			ThisDot = (PLCameraDir Dot PawnLocation) - PLCameraDot;
-			if( H.IsAliveAndWell() && ThisDot>0.f && ThisDot<10000.f )
+			if( KFPH.IsAliveAndWell() && ThisDot>0.f && ThisDot<10000.f )
 			{
 				V = Canvas.Project(PawnLocation);
 				if( V.X<-100 || V.X>(Canvas.SizeX+100) || V.Y<-100 || V.Y>(Canvas.SizeY+100) )
 					continue;
-				Canvas.DrawColor = GetHPColorScale(H);
+				Canvas.DrawColor = GetHPColorScale(KFPH);
 				if( PlayerOwner.FastTrace(PawnLocation,PLCameraLoc) )
 					ThisDot*=1.75f;
 				ThisDot = (DotScale/ThisDot)*350.f;
@@ -560,6 +594,7 @@ function DrawHUD()
 
 		if( !class'ExtPlayerController'.Default.bHideNameBeacons )
 		{
+            Canvas.EnableStencilTest(true);
 			// Draw zed health bars.
 			foreach WorldInfo.AllPawns(class'KFPawn_Monster', M)
 			{
@@ -567,52 +602,9 @@ function DrawHUD()
 				if( ThisDot>0 && ThisDot<8000.f && M.IsAliveAndWell() && M.PlayerReplicationInfo!=None && M!=PlayerOwner.Pawn && (WorldInfo.TimeSeconds - M.Mesh.LastRenderTime) < 0.4f )
 					DrawFriendlyHUDZ(M);
 			}
+            Canvas.EnableStencilTest(false);
 		}
 	}
-	
-	Canvas.Font = GetFontSizeIndex(0);
-	DrawActorOverlays(PLCameraLoc, PLCameraRot);
-}
-
-function DrawHiddenHumanPlayerIcon( PlayerReplicationInfo PRI, vector IconWorldLocation )
-{
-    local vector ScreenPos;
-    local float IconSizeMult;
-    local KFPlayerReplicationInfo KFPRI;
-    local Texture2D PlayerIcon;
-	local Color PerkColor;
-	local ExtPlayerReplicationInfo ExtPRI;
-	local Texture2D HumanIcon;
-	
-    KFPRI = KFPlayerReplicationInfo(PRI);
-    if( KFPRI == None )
-    	return;
-
-    // Project world pos to canvas
-    ScreenPos = Canvas.Project( IconWorldLocation + vect(0,0,2.2f) * class'KFPAwn_Human'.default.CylinderComponent.CollisionHeight );
-
-    // Fudge by icon size
-    IconSizeMult = PlayerStatusIconSize * FriendlyHudScale * 0.5f;
-    ScreenPos.X -= IconSizeMult;
-    ScreenPos.Y -= IconSizeMult;
-
-    if( ScreenPos.X < 0 || ScreenPos.X > Canvas.SizeX || ScreenPos.Y < 0 || ScreenPos.Y > Canvas.SizeY )
-    {
-        return;
-    }
-	
-	ExtPRI = ExtPlayerReplicationInfo(KFPRI);
-	if( ExtPRI == None )
-		return;
-
-	HumanIcon = ExtPRI.ECurrentPerk != None ? ExtPRI.ECurrentPerk.Default.PerkIcon : GenericHumanIconTexture;
-    PlayerIcon = PlayerOwner.GetTeamNum() == 0 ? HumanIcon : GenericHumanIconTexture;
-	PerkColor = ExtPRI.HUDPerkColor;
-	
-    // Draw human icon
-	Canvas.SetDrawColor( PerkColor.R, PerkColor.G, PerkColor.B, PerkColor.A );
-    Canvas.SetPos( ScreenPos.X, ScreenPos.Y );
-    Canvas.DrawTile( PlayerIcon, PlayerStatusIconSize * FriendlyHudScale, PlayerStatusIconSize * FriendlyHudScale, 0, 0, 256, 256 );
 }
 
 simulated static final function color GetHPColorScale( Pawn P )
@@ -642,8 +634,10 @@ simulated function DrawFriendlyHUDZ( KFPawn_Monster KFPH )
 	local vector ScreenPos, TargetLocation;
 	local FontRenderInfo MyFontRenderInfo;
 	local float FontScale;
+    local byte FadeAlpha;
 
 	MyFontRenderInfo = Canvas.CreateFontRenderInfo( true );
+    FadeAlpha = DrawToDistance(KFPH);
 
 	BarLength = FMin(PlayerStatusBarLengthMax * (float(Canvas.SizeX) / 1024.f), PlayerStatusBarLengthMax) * FriendlyHudScale;
 	BarHeight = FMin(8.f * (float(Canvas.SizeX) / 1024.f), 8.f) * FriendlyHudScale;
@@ -656,16 +650,19 @@ simulated function DrawFriendlyHUDZ( KFPawn_Monster KFPH )
 
 	//Draw health bar
 	Percentage = float(KFPH.Health) / float(KFPH.HealthMax);
-	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength *0.5f), ScreenPos.Y, HealthColor);
+	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength *0.5f), ScreenPos.Y, HealthColor, FadeAlpha);
 
 	//Draw player name (Top)
 	FontScale = class'KFGameEngine'.Static.GetKFFontScale() * FriendlyHudScale;
 	Canvas.Font = class'KFGameEngine'.Static.GetKFCanvasFont();
-	Canvas.SetDrawColorStruct(DrawToDistance(KFPH, PlayerBarTextColor));
+    
+    Canvas.DrawColor = PlayerBarTextColor;
+    Canvas.DrawColor.A = FadeAlpha;
+    
 	Canvas.SetPos(ScreenPos.X - (BarLength *0.5f), ScreenPos.Y - BarHeight * 2);
 	Canvas.DrawText( KFPH.PlayerReplicationInfo.PlayerName,,FontScale,FontScale, MyFontRenderInfo );
 }
-simulated function DrawFriendlyHUD( KFPawn_Human KFPH )
+simulated function bool DrawFriendlyHumanPlayerInfo( KFPawn_Human KFPH )
 {
 	local float Percentage;
 	local float BarHeight, BarLength;
@@ -673,91 +670,122 @@ simulated function DrawFriendlyHUD( KFPawn_Human KFPH )
 	local ExtPlayerReplicationInfo KFPRI;
 	local FontRenderInfo MyFontRenderInfo;
 	local float FontScale;
-	local string S;
+	local float ResModifier;
+	local float PerkIconPosX, PerkIconPosY, SupplyIconPosX, SupplyIconPosY, PerkIconSize;
+	local color CurrentArmorColor, CurrentHealthColor, TextColor;
+    local string S;
+    local byte FadeAlpha;
 
+	ResModifier = WorldInfo.static.GetResolutionBasedHUDScale() * FriendlyHudScale;
 	KFPRI = ExtPlayerReplicationInfo(KFPH.PlayerReplicationInfo);
 
 	if( KFPRI == none )
-		return;
+	{
+		return false;
+	}
 
+    FadeAlpha = DrawToDistance(KFPH);
 	MyFontRenderInfo = Canvas.CreateFontRenderInfo( true );
+	BarLength = FMin(PlayerStatusBarLengthMax * (Canvas.ClipX / 1024.f), PlayerStatusBarLengthMax) * ResModifier;
+	BarHeight = FMin(8.f * (Canvas.ClipX / 1024.f), 8.f) * ResModifier;
 
-	BarLength = FMin(PlayerStatusBarLengthMax * (float(Canvas.SizeX) / 1024.f), PlayerStatusBarLengthMax) * FriendlyHudScale;
-	BarHeight = FMin(8.f * (float(Canvas.SizeX) / 1024.f), 8.f) * FriendlyHudScale;
-
-	TargetLocation = KFPH.Location + vect(0,0,1) * KFPH.GetCollisionHeight() * 1.2;
-
-	ScreenPos = Canvas.Project(TargetLocation);
-	if( ScreenPos.X < 0 || ScreenPos.X > Canvas.SizeX || ScreenPos.Y < 0 || ScreenPos.Y > Canvas.SizeY )
-		return;
-
-	//Draw health bar
-	Percentage = FMin(float(KFPH.Health) / float(KFPH.HealthMax),1.f);
-	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength *0.5f), ScreenPos.Y, HealthColor, true);
-
-	//Draw armor bar
-	Percentage = FMin(float(KFPH.Armor) / float(KFPH.MaxArmor),1.f);
-	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength *0.5f), ScreenPos.Y - BarHeight, ArmorColor);
+	TargetLocation = KFPH.Mesh.GetPosition() + ( KFPH.CylinderComponent.CollisionHeight * vect(0,0,2.5f) );
+	ScreenPos = Canvas.Project( TargetLocation );
+	if( ScreenPos.X < 0 || ScreenPos.X > Canvas.ClipX || ScreenPos.Y < 0 || ScreenPos.Y > Canvas.ClipY )
+	{
+		return false;
+	}
 
 	//Draw player name (Top)
 	FontScale = class'KFGameEngine'.Static.GetKFFontScale() * FriendlyHudScale;
 	Canvas.Font = class'KFGameEngine'.Static.GetKFCanvasFont();
-	S = KFPRI.GetHumanReadableName();
+
+	// drop shadow for player name text
+    S = KFPRI.PlayerName;
 	if( KFPRI.bBot )
 	{
 		S = S$" (Bot)";
-		Canvas.DrawColor = KFPRI.HUDPerkColor;
+		TextColor = KFPRI.HUDPerkColor;
 	}
 	else if( KFPRI.ShowAdminName() ) // Admin info.
 	{
 		S = S$" ("$KFPRI.GetAdminNameAbr()$")";
-		Canvas.DrawColor = KFPRI.GetAdminColorC();
+		TextColor = KFPRI.GetAdminColorC();
 	}
-	else Canvas.DrawColor = WhiteColor;
-	
+	else TextColor = PlayerBarTextColor;
+    
 	if( bMeAdmin && KFPRI.FixedData>0 )
 	{
-		Canvas.SetDrawColor(255,0,0,255);
-		S $= " -"$KFPRI.GetDesc();
+        TextColor = MakeColor(255,0,0,255);
+		S @= "-"$KFPRI.GetDesc();
 	}
-	Canvas.DrawColor = DrawToDistance(KFPH, Canvas.DrawColor);
-	
-	Canvas.SetPos(ScreenPos.X - (BarLength *0.5f), ScreenPos.Y - BarHeight * 3);
-	Canvas.DrawText( S,,FontScale,FontScale, MyFontRenderInfo );
+    
+    TextColor.A = FadeAlpha;
+    
+    Canvas.DrawColor = PlayerBarShadowColor;
+    Canvas.DrawColor.A = FadeAlpha;
+	Canvas.SetPos(ScreenPos.X - (BarLength * 0.5f) + 1, ScreenPos.Y + 8);
+	Canvas.DrawText(S, , FontScale, FontScale, MyFontRenderInfo);
 
-	if( KFPRI.ECurrentPerk!=none )
+    Canvas.DrawColor = TextColor;
+	Canvas.SetPos(ScreenPos.X - (BarLength * 0.5f), ScreenPos.Y + 7);
+	Canvas.DrawText(S, , FontScale, FontScale, MyFontRenderInfo);
+
+	//Draw armor bar
+	Percentage = FMin(float(KFPH.Armor) / float(KFPH.MaxArmor), 100);
+	CurrentArmorColor = ClassicPlayerInfo ? ClassicArmorColor : ArmorColor;
+    CurrentArmorColor.A = FadeAlpha;
+	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength * 0.5f), ScreenPos.Y + BarHeight + (36 * FontScale * ResModifier), CurrentArmorColor, FadeAlpha);
+
+	//Draw health bar
+	Percentage = FMin(float(KFPH.Health) / float(KFPH.HealthMax), 100);
+	CurrentHealthColor = ClassicPlayerInfo ? ClassicHealthColor : HealthColor;
+    CurrentHealthColor.A = FadeAlpha;
+	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength * 0.5f), ScreenPos.Y + BarHeight * 2 + (36 * FontScale * ResModifier), CurrentHealthColor, FadeAlpha, true);
+
+	if( KFPRI.ECurrentPerk == None )
 	{
-		//draw perk icon
-		Canvas.DrawColor = DrawToDistance(KFPH, KFPRI.HUDPerkColor);
-		Canvas.SetPos(ScreenPos.X - (BarLength * 0.75), ScreenPos.Y - BarHeight * 2);
-		Canvas.DrawRect(PlayerStatusIconSize*FriendlyHudScale,PlayerStatusIconSize*FriendlyHudScale,KFPRI.ECurrentPerk.default.PerkIcon);
-
-		//Draw perk level and name text
-		Canvas.SetPos(ScreenPos.X - (BarLength *0.5f), ScreenPos.Y + BarHeight);
-		Canvas.DrawText( KFPRI.GetPerkLevelStr()@KFPRI.ECurrentPerk.default.PerkName,,FontScale,FontScale, MyFontRenderInfo );
-		
-		if( KFPRI.HasSupplier!=None )
-		{
-			Canvas.DrawColor = DrawToDistance(KFPH, (KFPlayerOwner.Pawn==None || KFPRI.CanUseSupply(KFPlayerOwner.Pawn)) ? SupplierUsableColor : SupplierActiveColor);
-			Canvas.SetPos( ScreenPos.X + BarLength * 0.5f, ScreenPos.Y - BarHeight * 2 );
-			Canvas.DrawRect( PlayerStatusIconSize*FriendlyHudScale, PlayerStatusIconSize*FriendlyHudScale, KFPRI.HasSupplier.Default.SupplyIcon);
-		}
+		return false;
 	}
-	else if( KFPRI.bBot && KFPRI.CurrentPerkClass!=none )
-	{
-		//draw perk icon
-		Canvas.SetPos(ScreenPos.X - (BarLength * 0.75), ScreenPos.Y - BarHeight * 2);
-		Canvas.DrawRect(PlayerStatusIconSize*FriendlyHudScale,PlayerStatusIconSize*FriendlyHudScale,KFPRI.CurrentPerkClass.default.PerkIcon);
 
-		//Draw name text
-		Canvas.SetPos(ScreenPos.X - (BarLength *0.5f), ScreenPos.Y + BarHeight);
-		Canvas.DrawText( KFPRI.CurrentPerkClass.default.PerkName,,FontScale,FontScale, MyFontRenderInfo );
-	}
+	// drop shadow for perk name text
+    Canvas.DrawColor = PlayerBarShadowColor;
+    Canvas.DrawColor.A = FadeAlpha;
+	Canvas.SetPos(ScreenPos.X - (BarLength * 0.5f) + 1, ScreenPos.Y + BarHeight * 3 + (36 * FontScale * ResModifier) + 1);
+	Canvas.DrawText(KFPRI.GetPerkLevelStr()@KFPRI.ECurrentPerk.default.PerkName, , FontScale, FontScale, MyFontRenderInfo);
+
+	//Draw perk level and name text
+	Canvas.DrawColor = PlayerBarTextColor;
+    Canvas.DrawColor.A = FadeAlpha;
+	Canvas.SetPos(ScreenPos.X - (BarLength * 0.5f), ScreenPos.Y + BarHeight * 3 + (36 * FontScale * ResModifier));
+	Canvas.DrawText(KFPRI.GetPerkLevelStr()@KFPRI.ECurrentPerk.default.PerkName, , FontScale, FontScale, MyFontRenderInfo);
+
+	// drop shadow for perk icon
+    Canvas.DrawColor = PlayerBarShadowColor;
+	Canvas.DrawColor.A = FadeAlpha;
+	PerkIconSize = PlayerStatusIconSize * ResModifier;
+	PerkIconPosX = ScreenPos.X - (BarLength * 0.5f) - PerkIconSize + 1;
+	PerkIconPosY = ScreenPos.Y + (36 * FontScale * ResModifier) + 1;
+	SupplyIconPosX = ScreenPos.X + (BarLength * 0.5f) + 1;
+	SupplyIconPosY = PerkIconPosY + 4 * ResModifier;
+	DrawPerkIcons(KFPH, PerkIconSize, PerkIconPosX, PerkIconPosY, SupplyIconPosX, SupplyIconPosY, true);
+
+	//draw perk icon
+    Canvas.DrawColor = PlayerBarIconColor;
+	Canvas.DrawColor.A = FadeAlpha;
+	PerkIconPosX = ScreenPos.X - (BarLength * 0.5f) - PerkIconSize;
+	PerkIconPosY = ScreenPos.Y + (36 * FontScale * ResModifier);
+	SupplyIconPosX = ScreenPos.X + (BarLength * 0.5f);
+	SupplyIconPosY = PerkIconPosY + 4 * ResModifier;
+	DrawPerkIcons(KFPH, PerkIconSize, PerkIconPosX, PerkIconPosY, SupplyIconPosX, SupplyIconPosY, false);
+
+	return true;
 }
-simulated final function DrawPlayerInfoBar( KFPawn P, float BarPercentage, float BarLength, float BarHeight, float XPos, float YPos, Color BarColor, optional bool bDrawingHealth )
+simulated final function DrawPlayerInfoBar( KFPawn P, float BarPercentage, float BarLength, float BarHeight, float XPos, float YPos, Color BarColor, byte FadeAlpha, optional bool bDrawingHealth )
 {
 	//background for status bar
-	Canvas.SetDrawColorStruct(DrawToDistance(P, PlayerBarBGColor));
+	Canvas.DrawColor = PlayerBarBGColor;
+    Canvas.DrawColor.A = FadeAlpha;
 	Canvas.SetPos(XPos, YPos);
 	Canvas.DrawTileStretched(PlayerStatusBarBGTexture, BarLength, BarHeight, 0, 0, 32, 32);
 
@@ -767,7 +795,8 @@ simulated final function DrawPlayerInfoBar( KFPawn P, float BarPercentage, float
 	BarHeight-=2;
 
 	//Forground for status bar.
-	Canvas.SetDrawColorStruct(DrawToDistance(P, BarColor));
+	Canvas.DrawColor = BarColor;
+    Canvas.DrawColor.A = FadeAlpha;
 	Canvas.SetPos(XPos, YPos);
 	Canvas.DrawTileStretched(PlayerStatusBarBGTexture, BarLength * BarPercentage, BarHeight, 0, 0, 32, 32);
 	
@@ -777,9 +806,74 @@ simulated final function DrawPlayerInfoBar( KFPawn P, float BarPercentage, float
 		XPos+=(BarLength * BarPercentage);
 		BarPercentage = FMin(float(ExtHumanPawn(P).RepRegenHP) / float(P.HealthMax),1.f-BarPercentage);
 		
-		Canvas.DrawColor = DrawToDistance(P, MakeColor(255,128,128,255));
+        Canvas.DrawColor = MakeColor(255,128,128,FadeAlpha);
 		Canvas.SetPos(XPos, YPos);
 		Canvas.DrawTileStretched(PlayerStatusBarBGTexture, BarLength * BarPercentage, BarHeight, 0, 0, 32, 32);
+	}
+}
+simulated function DrawPerkIcons(KFPawn_Human KFPH, float PerkIconSize, float PerkIconPosX, float PerkIconPosY, float SupplyIconPosX, float SupplyIconPosY, bool bDropShadow)
+{
+	local byte PrestigeLevel;
+	local ExtPlayerReplicationInfo KFPRI;
+	local color TempColor;
+	local float ResModifier;
+
+	KFPRI = ExtPlayerReplicationInfo(KFPH.PlayerReplicationInfo);
+
+	if (KFPRI == none)
+	{
+		return;
+	}
+
+	PrestigeLevel = KFPRI.GetActivePerkPrestigeLevel();
+	ResModifier = WorldInfo.static.GetResolutionBasedHUDScale() * FriendlyHudScale;
+
+	if (KFPRI.CurrentVoiceCommsRequest == VCT_NONE && KFPRI.ECurrentPerk != none && PrestigeLevel > 0)
+	{
+		Canvas.SetPos(PerkIconPosX, PerkIconPosY);
+		Canvas.DrawTile(KFPRI.ECurrentPerk.default.BasePerk.default.PrestigeIcons[PrestigeLevel - 1], PerkIconSize, PerkIconSize, 0, 0, 256, 256);
+	}
+
+	if (PrestigeLevel > 0)
+	{																//icon slot in image is not centered
+		Canvas.SetPos(PerkIconPosX + (PerkIconSize * (1 - PrestigeIconScale)) / 2, PerkIconPosY + PerkIconSize * 0.05f);
+		Canvas.DrawTile(KFPRI.GetCurrentIconToDisplay(), PerkIconSize * PrestigeIconScale, PerkIconSize * PrestigeIconScale, 0, 0, 256, 256);
+	}
+	else
+	{
+		Canvas.SetPos(PerkIconPosX, PerkIconPosY);
+		Canvas.DrawTile(KFPRI.GetCurrentIconToDisplay(), PerkIconSize, PerkIconSize, 0, 0, 256, 256);
+	}
+
+	if (KFPRI.PerkSupplyLevel > 0 && KFPRI.ECurrentPerk.default.BasePerk.static.GetInteractIcon() != none)
+	{
+		if (!bDropShadow)
+		{
+			if (KFPRI.PerkSupplyLevel == 2)
+			{
+				if (KFPRI.bPerkPrimarySupplyUsed && KFPRI.bPerkSecondarySupplyUsed)
+				{
+					TempColor = SupplierActiveColor;
+				}
+				else if (KFPRI.bPerkPrimarySupplyUsed || KFPRI.bPerkSecondarySupplyUsed)
+				{
+					TempColor = SupplierHalfUsableColor;
+				}
+				else
+				{
+					TempColor = SupplierUsableColor;
+				}
+			}
+			else if (KFPRI.PerkSupplyLevel == 1)
+			{
+				TempColor = KFPRI.bPerkPrimarySupplyUsed ? SupplierActiveColor : SupplierUsableColor;
+			}
+
+			Canvas.SetDrawColorStruct(TempColor);
+		}
+
+		Canvas.SetPos(SupplyIconPosX, SupplyIconPosY); //offset so that supplier icon shows up on the correct side of the player's health bar
+		Canvas.DrawTile(KFPRI.ECurrentPerk.default.BasePerk.static.GetInteractIcon(), (PlayerStatusIconSize * 0.75) * ResModifier, (PlayerStatusIconSize * 0.75) * ResModifier, 0, 0, 256, 256);
 	}
 }
 simulated function DrawMonsterHUD( KFPawn KFPH )
@@ -790,11 +884,13 @@ simulated function DrawMonsterHUD( KFPawn KFPH )
 	local Ext_T_MonsterPRI PRI;
 	local FontRenderInfo MyFontRenderInfo;
 	local float FontScale;
+    local byte FadeAlpha;
 
 	PRI = Ext_T_MonsterPRI(KFPH.PlayerReplicationInfo);
 	if( PRI==None )
 		return;
 
+    FadeAlpha = DrawToDistance(KFPH);
 	MyFontRenderInfo = Canvas.CreateFontRenderInfo( true );
 
 	BarLength = FMin(PlayerStatusBarLengthMax * (float(Canvas.SizeX) / 1024.f), PlayerStatusBarLengthMax) * FriendlyHudScale;
@@ -808,12 +904,12 @@ simulated function DrawMonsterHUD( KFPawn KFPH )
 
 	//Draw health bar
 	Percentage = FMin(float(KFPH.Health) / float(KFPH.HealthMax),1.f);
-	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength *0.5f), ScreenPos.Y, HealthColor);
+	DrawPlayerInfoBar(KFPH, Percentage, BarLength, BarHeight, ScreenPos.X - (BarLength *0.5f), ScreenPos.Y, HealthColor, FadeAlpha);
 
 	//Draw player name (Top)
 	FontScale = class'KFGameEngine'.Static.GetKFFontScale() * FriendlyHudScale;
 	Canvas.Font = class'KFGameEngine'.Static.GetKFCanvasFont();
-	Canvas.DrawColor = DrawToDistance(KFPH, (PRI.OwnerPRI==PlayerOwner.PlayerReplicationInfo ? MakeColor(32,250,32,255) : MakeColor(250,32,32,255)));
+	Canvas.DrawColor = PRI.OwnerPRI==PlayerOwner.PlayerReplicationInfo ? MakeColor(32,250,32,FadeAlpha) : MakeColor(250,32,32,FadeAlpha);
 	Canvas.SetPos(ScreenPos.X - (BarLength *0.5f), ScreenPos.Y - BarHeight * 3);
 	Canvas.DrawText( PRI.PlayerName,,FontScale,FontScale, MyFontRenderInfo );
 
@@ -866,18 +962,16 @@ simulated function DrawPetInfo()
 	}
 }
 
-function Color DrawToDistance(KFPawn Pawn, Color DrawColor)
+function byte DrawToDistance(Actor A, optional float StartAlpha=255.f, optional float MinAlpha=90.f)
 {
-	local float Dist, fZoom;
+    local float Dist, fZoom;
 
-	Dist = VSize(Pawn.Location - PLCameraLoc) * 0.5;
+    Dist = VSize(A.Location - PLCameraLoc);
     if ( Dist <= HealthBarFullVisDist || PlayerOwner.PlayerReplicationInfo.bOnlySpectator )
         fZoom = 1.0;
     else fZoom = FMax(1.0 - (Dist - HealthBarFullVisDist) / (HealthBarCutoffDist - HealthBarFullVisDist), 0.0);
-	
-	DrawColor.A = Clamp(255 * fZoom, 90, 255);
-	
-	return DrawColor;
+    
+    return Clamp(StartAlpha * fZoom, MinAlpha, StartAlpha);
 }
 
 final function AddNumberMsg( int Amount, vector Pos, byte Type )
@@ -1059,13 +1153,13 @@ simulated final function DrawItemsList()
 		
 		Canvas.TextSize(NewItems[i].Item,XS,YS,FontScale,FontScale);
 
-		if( NewItems[i].Icon!=None )
+		/*if( NewItems[i].Icon!=None )
 		{
 			Canvas.SetPos(XPos-YSize,YPos);
 			Canvas.DrawRect(YSize,YSize,NewItems[i].Icon);
 			XS = XPos-(YSize*1.1)-XS;
 		}
-		else XS = XPos-XS;
+		else */XS = XPos-XS;
 		
 		Canvas.SetPos(XS,YPos);
 		Canvas.DrawText("New Item:",,FontScale,FontScale);

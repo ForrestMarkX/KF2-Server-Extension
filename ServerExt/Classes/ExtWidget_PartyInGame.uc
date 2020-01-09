@@ -21,7 +21,7 @@ function GFxObject RefreshSlot( int SlotIndex, KFPlayerReplicationInfo KFPRI )
 	local bool bIsLeader;
 	local bool bIsMyPlayer;
 	local ExtPlayerController EPC;
-	local GFxObject PlayerInfoObject;
+	local GFxObject PlayerInfoObject, PerkIconObject;
 	local ExtPlayerReplicationInfo EPRI;
 
 	PlayerInfoObject = CreateObject("Object");
@@ -42,8 +42,11 @@ function GFxObject RefreshSlot( int SlotIndex, KFPlayerReplicationInfo KFPRI )
 	PlayerInfoObject.SetBool("myPlayer", bIsMyPlayer);
 	if( ExtMemberSlots[SlotIndex].PerkClass != none )
 	{
+		PerkIconObject = CreateObject("Object");
+		PerkIconObject.SetString("perkIcon", ExtMemberSlots[SlotIndex].PerkClass.static.GetPerkIconPath(EPRI.ECurrentPerkLevel));
+		PlayerInfoObject.SetObject("perkImageSource", PerkIconObject);
+        
 		PlayerInfoObject.SetString("perkLevel", string(EPRI.ECurrentPerkLevel));
-		PlayerInfoObject.SetString("perkIconPath", ExtMemberSlots[SlotIndex].PerkClass.static.GetPerkIconPath(EPRI.ECurrentPerkLevel));
 	}
 	if( !bIsMyPlayer )
 	{
@@ -76,5 +79,4 @@ function GFxObject RefreshSlot( int SlotIndex, KFPlayerReplicationInfo KFPRI )
 
 DefaultProperties
 {
-	PlayerSlots=12
 }

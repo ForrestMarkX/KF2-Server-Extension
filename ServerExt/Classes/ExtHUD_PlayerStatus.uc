@@ -14,6 +14,7 @@ function UpdatePerk()
 {
 	local int CurrentPerkLevel,CurrentPerkEXP;
 	local Ext_PerkBase CurrentPerk;
+    local GFxObject PerkIconObject;
 
 	if( ExPC == none || ExPC.ActivePerkManager==None || ExPC.ActivePerkManager.CurrentPerk==None )
 		return;
@@ -21,12 +22,16 @@ function UpdatePerk()
 	CurrentPerk = ExPC.ActivePerkManager.CurrentPerk;
 	CurrentPerkLevel = CurrentPerk.CurrentLevel;
 	CurrentPerkEXP = CurrentPerk.CurrentEXP;
-
+    
 	// Update the perk class.
 	if( ( ExLastPerkClass != CurrentPerk.Class ) || ( LastPerkLevel != CurrentPerkLevel ) )
 	{
 		CurPerkPath = CurrentPerk.GetPerkIconPath(CurrentPerkLevel);
-		SetString("playerPerkIcon" , CurPerkPath);
+        
+		PerkIconObject = CreateObject("Object");
+		PerkIconObject.SetString("perkIcon", CurPerkPath);
+		SetObject("playerPerkIcon", PerkIconObject);
+        
 		SetInt("playerPerkXPPercent", CurrentPerk.GetProgressPercent() * 100.f );
 		if( LastPerkLevel != CurrentPerkLevel && ExLastPerkClass==CurrentPerk.Class )
 		{

@@ -49,6 +49,7 @@ var int LastWaveNum,NumWaveSwitches;
 var ExtSpawnPointHelper SpawnPointer;
 var bool bRespawnCheck,bSpecialSpawn,bGameHasEnded,bIsPostGame;
 var config bool bKillMessages,bDamageMessages,bEnableMapVote,bNoAdminCommands,bNoWebAdmin,bNoBoomstickJumping,bDumpXMLStats,bRagdollFromFall,bRagdollFromMomentum,bRagdollFromBackhit,bAddCountryTags;
+var config bool bServerPerksMode;
 
 function PostBeginPlay()
 {
@@ -426,7 +427,7 @@ final function GT_PlayerKilled( Controller Killer, Controller Killed, class<Dama
 	if( KFG!=None && KFPC != none && MonsterPawn!=none )
 	{
 		//Chris: We have to do it earlier here because we need a damage type
-		KFPC.AddZedKill( MonsterPawn.class, KFG.GameDifficulty, damageType );
+		KFPC.AddZedKill( MonsterPawn.class, KFG.GameDifficulty, damageType, false );
 
 		if( KFPC.ActivePerkManager!=none && KFPC.ActivePerkManager.CanEarnSmallRadiusKillXP(damageType) )
 			KFG.CheckForBerserkerSmallRadiusKill( MonsterPawn, KFPC );
